@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <sched.h>
 
 #include "rp.h"
 
@@ -10,6 +11,8 @@
 #define MAXHANDLERLEN 5
 #define DELIM " "
 #define BILLION  1000000000L;
+
+char ERRVAL[] = "/n";
 
 /*
 int ktime_get(void){
@@ -20,7 +23,8 @@ typedef int ktime_t;
 */
 
 typedef struct actionTable {
-	long long time;
+	long secs;
+	long nanos;
 	rp_dpin_t pin;
 	long parameter;
 	struct actionTable *next;
@@ -74,14 +78,22 @@ int main(int argc, char *argv[])
 	}
 	printf("read action table file.\n");
 
-	if (execActionTable() < 0) {
-		printf("Failed to exec action table.\n");
+	struct sched_param params;
+	params.sched_priority = 99;
+	if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
+		printf("Failed to set priority.\n");
+		_exit(4);
+	}
+
+	int execstatus = execActionTable();
+	if (execstatus < 0) {
+		printf("Failed to exec action table (%i).\n", execstatus);
 		_exit(4);
 	}
 	printf("exec action table done.\n");
 
 	rp_Release();
-	exit(0);
+	_exit(0);
 }
 
 /******************************************************************************/
@@ -101,8 +113,10 @@ int readActionTable(FILE *fp) {
 			printf("read %i lines of action table\n", lines_read);
 			return 0;
 		}
-		if (readActionTableLine(line, currRow) < 0)
+		if (readActionTableLine(line, currRow) < 0){
+			printf("readActionTableLine failed on %i\n", lines_read);
 			return -1;
+		}
 		nextRow = (actionTable_t *)malloc(sizeof(actionTable_t));
 		//printf("malloc for line %i, addr %p\n", lines_read, nextRow);
 		nextRow->next = (actionTable_t *)0;
@@ -114,27 +128,34 @@ int readActionTable(FILE *fp) {
 }
 
 int readActionTableLine(char *line, actionTable_t *tableEntry){
-	char *time_s;
+	char *stime_s;
+	char *nstime_s;
 	char *pin_s;
 	char *parameter_s;
 
-	time_s = strtok(line, DELIM);
-	if (time_s == NULL){
-		printf("action time is NULL for '%s'\n", line);
+	stime_s = strtok(line, DELIM);
+	if (stime_s == NULL){
+		printf("action stime is NULL for '%s'\n", line);
+		return -1;
+	}
+	nstime_s = strtok(NULL, DELIM);
+	if (nstime_s == NULL){
+		printf("action nstime is NULL for '%s'\n", line);
 		return -1;
 	}
 	pin_s = strtok(NULL, DELIM);
-	if (time_s == NULL){
-		printf("pin is NULL for %s", line);
+	if (pin_s == NULL){
+		printf("pin is NULL for %s\n", line);
 		return -1;
 	}
 	parameter_s = strtok(NULL, DELIM);
-	if (time_s == NULL){
+	if (parameter_s == NULL){
 		printf("parameter_s is NULL for %s", line);
 		return -1;
 	}
 
-	tableEntry->time = strtoll(time_s, NULL, 10);
+	tableEntry->secs = strtoll(stime_s, NULL, 10);
+	tableEntry->nanos = strtoll(nstime_s, NULL, 10);
 	tableEntry->pin = (rp_dpin_t)strtol(pin_s, NULL, 10);
 	tableEntry->parameter = strtol(parameter_s, NULL, 10);
 	//printf("time:%lli pin:%i high:%i\n", tableEntry->time, tableEntry->pin, tableEntry->parameter);
@@ -144,22 +165,42 @@ int readActionTableLine(char *line, actionTable_t *tableEntry){
 /* need to add error handling on the clock */
 int execActionTable() {
 	struct timespec start, now;
-	clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-	long int secs = table->time / BILLION;
-	long int ns = table->time % BILLION;
+	long currsec = 0;
+	long currnano = 0;
+	long nanooffset;
+	long secsoverdue = -1;
+	long nsoverdue = -1;
+	/* approx. jitter caused by clock_gettime and the context switch is about 500ns
+	 * 10x worse than cycle counting.
+	 * peak freq. obtainable using this is 270KHz - 2us bwteen signal events.
+	 * need to be able to toggle pins simultainusly.
+	 * jitter from nanos comp - about 25us bleh
+	 */
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &start) == -1)
+		return -1;
+	nanooffset = start.tv_nsec;
+	actionTable_t *currRow = table;
 	while (1) {
-		clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-		// could possibly loop in the ns part once we are in the right second, to reduce wait time/jitter?
-		if (secs > now.tv_sec-start.tv_sec && ns > now.tv_nsec-start.tv_nsec){
-			continue;
-		}
-		rp_DpinSetState(RP_DIO4_P, table->parameter);
-		if (table->next != NULL) {
-			table = table->next;
-			secs = table->time / BILLION;
-			ns = table->time % BILLION;
+		if (clock_gettime(CLOCK_MONOTONIC_RAW, &now) == -1)
+			return -1;
+		currsec = (long)now.tv_sec-(long)start.tv_sec;
+		if (currsec == 0){
+			currnano = now.tv_nsec-nanooffset;
 		} else {
-			return 0;
+			currnano = now.tv_nsec;
+		}
+		secsoverdue = currsec - currRow->secs;
+		nsoverdue = currnano - currRow->nanos;
+		// could possibly loop in the ns part once we are in the right second, to reduce wait time/jitter?
+		if (secsoverdue > 0 || (secsoverdue == 0 && nsoverdue > 0)){
+			rp_DpinSetState(RP_DIO2_P, currRow->parameter);
+			if (currRow->next != NULL) {
+				currRow = currRow->next;
+			} else {
+				return 0;
+				//clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+				//currRow = table;
+			}
 		}
 	}
 }
