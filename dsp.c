@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <signal.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -22,11 +23,13 @@ int ktime_get(void){
 typedef int ktime_t;
 */
 
+uint32_t INT_MAX = UINT32_MAX;
+
 typedef struct actionTable {
 	long secs;
 	long nanos;
-	rp_dpin_t pin;
-	long parameter;
+	int pin;
+	uint32_t parameter;
 	struct actionTable *next;
 } actionTable_t;
 
@@ -34,6 +37,7 @@ typedef struct actionTable {
 int readActionTable(FILE *fp);
 int readActionTableLine(char *line, actionTable_t *tableEntry);
 int execActionTable();
+void sig_handler(int signo);
 void _exit(int status);
 
 void spinwait(int loops) {
@@ -50,6 +54,10 @@ int main(int argc, char *argv[])
 	if(rp_Init() != RP_OK){
 		fprintf(stderr, "Rp api init failed!\n");
 	}
+
+	if (signal(SIGINT, sig_handler) == SIG_ERR){
+  	printf("Signal handler failed\n");
+  }
 
 	printf("hello, world!\n");
 
@@ -92,7 +100,6 @@ int main(int argc, char *argv[])
 	}
 	printf("exec action table done.\n");
 
-	rp_Release();
 	_exit(0);
 }
 
@@ -170,11 +177,20 @@ int execActionTable() {
 	long nanooffset;
 	long secsoverdue = -1;
 	long nsoverdue = -1;
+
+	float a_volts = 0;
+  rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
+	rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
+	rp_GenAmp(RP_CH_1, a_volts);
+	rp_GenAmp(RP_CH_2, a_volts);
+	rp_GenOutEnable(RP_CH_1);
+	rp_GenOutEnable(RP_CH_2);
+
 	/* approx. jitter caused by clock_gettime and the context switch is about 500ns
 	 * 10x worse than cycle counting.
 	 * peak freq. obtainable using this is 270KHz - 2us bwteen signal events.
 	 * need to be able to toggle pins simultainusly.
-	 * jitter from nanos comp - about 25us bleh
+	 * jitter from nanos comp - about 25us bleh - 1 jiffy?
 	 */
 	if (clock_gettime(CLOCK_MONOTONIC_RAW, &start) == -1)
 		return -1;
@@ -193,7 +209,15 @@ int execActionTable() {
 		nsoverdue = currnano - currRow->nanos;
 		// could possibly loop in the ns part once we are in the right second, to reduce wait time/jitter?
 		if (secsoverdue > 0 || (secsoverdue == 0 && nsoverdue > 0)){
-			rp_DpinSetState(RP_DIO2_P, currRow->parameter);
+			if (currRow->pin >= 0){
+				rp_DpinSetState(currRow->pin, currRow->parameter);
+			} else {
+				// Analog outs are reprsented by negative pin nums
+				// and the voltage by a uint32_t
+				// convert channel from [-1, -2] to [0, 1]
+				// and 2**31 to 0.5
+				rp_GenAmp((currRow->pin*-1)-1, (float)currRow->parameter/INT_MAX);
+			}
 			if (currRow->next != NULL) {
 				currRow = currRow->next;
 			} else {
@@ -205,6 +229,11 @@ int execActionTable() {
 	}
 }
 
+void sig_handler(int signo){
+  if (signo == SIGINT)
+    _exit(5);
+}
+
 void _exit(int status) {
 	actionTable_t *next = table;
 	while (next != NULL) {
@@ -212,5 +241,8 @@ void _exit(int status) {
 		free(table);
 		table = next;
 	}
+	rp_ApinReset();
+	rp_DpinReset();
+	rp_Release();
 	exit(status);
 }
