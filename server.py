@@ -65,15 +65,21 @@ class rpServer(object):
     def high(self, name):
         with open('tmp', 'w') as f:
             f.write('0 0 {} 1\n'.format(self.RPPINS[name]))
-            f.write('5 0 {} 1'.format(self.RPPINS[name]))
+            f.write('5 0 {} 0'.format(self.RPPINS[name]))
         cmd = ['./dsp', os.path.join(os.getcwd(), 'tmp')]
         subprocess.call(cmd)
 
+    def analog_raw(self, pin, value):
+        with open('tmp', 'w') as f:
+            f.write('0 0 {} {}\n'.format(-1*pin, value))
+            f.write('5 0 {} 0'.format(-1*pin))
+        cmd = ['./dsp', os.path.join(os.getcwd(), 'tmp')]
+        subprocess.call(cmd)
 
     def high_raw(self, pin):
         with open('tmp', 'w') as f:
             f.write('0 0 {} 1\n'.format(pin))
-            f.write('5 0 {} 1'.format(pin))
+            f.write('5 0 {} 0'.format(pin))
         cmd = ['./dsp', os.path.join(os.getcwd(), 'tmp')]
         subprocess.call(cmd)
 
@@ -90,7 +96,7 @@ class rpServer(object):
         # wha?
         pass
 
-    def profileSet(self, profileStr, digitals, analogs): # This is downloading the action table
+    def profileSet(self, profileStr, digitals, *analogs): # This is downloading the action table
         # digitals is numpy.zeros((len(times), 2), dtype = numpy.uint32),
         # starting at 0 -> [times for digital signal changes, digital lines]
         # analogs is a list of analog lines and the values to put on them at each time
@@ -98,16 +104,19 @@ class rpServer(object):
         for time, DigitalBitMask in zip(*digitals):
             for shift, value in enumerate(bin(DigitalBitMask)[::-1].ljust(6, '0')):
                 self.timeLineValues.append( (time, self.DigitalLineToRPPORT[1<<shift], value) )
-        #for analogLine in analogs:
-        #    for time, value in analogs:
-        #        timeLineValue.append( (time, ))
+
+        for pin, analogLine in enumerate(analogs):
+            print(pin, analogLine)
+            for time, value in zip(*analogLine):
+                self.timeLineValues.append( (time, -(pin+1), value*(2**31-1)))
+
         self.timeLineValues.sort(key=lambda x: x[0])
 
     def DownloadProfile(self): # This is saving the action table
         for time, line, value in self.timeLineValues:
             secs = repr(int(time/1e9))
             nanos = repr(int(time%1e9))
-            print('{} {} {} {}'.format(secs, nanos, line, value), file=self.profileFile)
+            print('{} {} {} {}'.format(secs, nanos, line, int(value)), file=self.profileFile)
         self.profileFile.flush()
         self.profileFile.close()
 
