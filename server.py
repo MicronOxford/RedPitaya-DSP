@@ -7,9 +7,8 @@ import os
 import uuid
 from PyRedPitaya.board import RedPitaya
 
-## Need to save the action table, so it can be used again
-
 def bin(s):
+    ''' Returns the set bits in a positive int as a str.'''
     return str(s) if s<=1 else bin(s>>1) + str(s&1)
 
 class rpServer(object):
@@ -42,9 +41,10 @@ class rpServer(object):
     ]
 
     # The names are a enum, so mapping 0 to the first will allow lookups into the
-    # enum in C.
+    # enum in C. Defined in rp.h
     RPPINS =  dict(zip(RPPINNAMES, range(len(RPPINNAMES))))
 
+    ## The bitshifts are from the definitions of the old dsp card.
     DigitalLineToRPPORT = {
     	1 << 0:RPPINS['RP_DIO1_P'], # 'EMCCDa'
     	1 << 1:RPPINS['RP_DIO2_P'], # 'EMCCDb'
@@ -62,6 +62,10 @@ class rpServer(object):
         self.pid = None
         self.name = None
 
+    ## In order to just toggle a pin, we create a short actionTable
+    # turning the pin on and then off after 5 secs.
+    # if we just turned it on, the end of the DSP program will reset everything
+    # too 0 instantly.
     def high(self, name):
         with open('tmp', 'w') as f:
             f.write('0 0 {} 1\n'.format(self.RPPINS[name]))
@@ -69,6 +73,7 @@ class rpServer(object):
         cmd = ['./dsp', os.path.join(os.getcwd(), 'tmp')]
         subprocess.call(cmd)
 
+    # raw version does not do pin name lookups.
     def analog_raw(self, pin, value):
         with open('tmp', 'w') as f:
             f.write('0 0 {} {}\n'.format(-1*pin, value))
@@ -83,6 +88,7 @@ class rpServer(object):
         cmd = ['./dsp', os.path.join(os.getcwd(), 'tmp')]
         subprocess.call(cmd)
 
+    # The dsp has a handler for SIGINT that cleans up
     def Abort(self):
         # kill the server process
         subprocess.call(['kill', '-9', str(self.pid)])
