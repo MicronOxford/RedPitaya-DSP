@@ -5,8 +5,9 @@
 #include <unistd.h>
 #include <time.h>
 #include <sched.h>
+#include "standalone/xtime_l.h"
 
-#include "rp.h"
+//#include "rp.h"
 
 #define MAXLINELEN 50
 #define MAXHANDLERLEN 5
@@ -51,9 +52,15 @@ actionTable_t *table;
 int main(int argc, char *argv[])
 {
 
-	if(rp_Init() != RP_OK){
-		fprintf(stderr, "Rp api init failed!\n");
-	}
+	XTime starttime = 0;
+	XTime_SetTime(starttime);
+	XTime now;
+	XTime_GetTime(&now);
+	printf("time is %llu\n", (unsigned long long)now);
+
+	// if(rp_Init() != RP_OK){
+	// 	fprintf(stderr, "Rp api init failed!\n");
+	// }
 
 	if (signal(SIGINT, sig_handler) == SIG_ERR){
   	printf("Signal handler failed\n");
@@ -163,7 +170,7 @@ int readActionTableLine(char *line, actionTable_t *tableEntry){
 
 	tableEntry->secs = strtoll(stime_s, NULL, 10);
 	tableEntry->nanos = strtoll(nstime_s, NULL, 10);
-	tableEntry->pin = (rp_dpin_t)strtol(pin_s, NULL, 10);
+	// tableEntry->pin = (rp_dpin_t)strtol(pin_s, NULL, 10);
 	tableEntry->parameter = strtol(parameter_s, NULL, 10);
 	//printf("time:%lli pin:%i high:%i\n", tableEntry->time, tableEntry->pin, tableEntry->parameter);
 	return 0;
@@ -179,12 +186,12 @@ int execActionTable() {
 	long nsoverdue = -1;
 
 	float a_volts = 0;
-  rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
-	rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
-	rp_GenAmp(RP_CH_1, a_volts);
-	rp_GenAmp(RP_CH_2, a_volts);
-	rp_GenOutEnable(RP_CH_1);
-	rp_GenOutEnable(RP_CH_2);
+  // rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
+	// rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
+	// rp_GenAmp(RP_CH_1, a_volts);
+	// rp_GenAmp(RP_CH_2, a_volts);
+	// rp_GenOutEnable(RP_CH_1);
+	// rp_GenOutEnable(RP_CH_2);
 
 	/* approx. jitter caused by clock_gettime and the context switch is about 500ns
 	 * 10x worse than cycle counting.
@@ -210,13 +217,13 @@ int execActionTable() {
 		// could possibly loop in the ns part once we are in the right second, to reduce wait time/jitter?
 		if (secsoverdue > 0 || (secsoverdue == 0 && nsoverdue > 0)){
 			if (currRow->pin >= 0){
-				rp_DpinSetState(currRow->pin, currRow->parameter);
+			  // rp_DpinSetState(currRow->pin, currRow->parameter);
 			} else {
 				// Analog outs are reprsented by negative pin nums
 				// and the voltage by a uint32_t
 				// convert channel from [-1, -2] to [0, 1]
 				// and 2**31 to 0.5
-				rp_GenAmp((currRow->pin*-1)-1, (float)currRow->parameter/INT_MAX);
+				// rp_GenAmp((currRow->pin*-1)-1, (float)currRow->parameter/INT_MAX);
 			}
 			if (currRow->next != NULL) {
 				currRow = currRow->next;
@@ -241,8 +248,10 @@ void _exit(int status) {
 		free(table);
 		table = next;
 	}
-	rp_ApinReset();
-	rp_DpinReset();
-	rp_Release();
+	// rp_GenAmp(RP_CH_1, 0);
+	// rp_GenAmp(RP_CH_2, 0);
+	// rp_ApinReset();
+	// rp_DpinReset();
+	// rp_Release();
 	exit(status);
 }
