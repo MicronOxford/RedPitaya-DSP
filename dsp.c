@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sched.h>
-#include "standalone/xtime_l.h"
+#include "timer.h"
 
 //#include "rp.h"
 
@@ -51,12 +51,12 @@ actionTable_t *table;
 
 int main(int argc, char *argv[])
 {
+	printf("hello, w\n");
 
-	XTime starttime = 0;
-	XTime_SetTime(starttime);
-	XTime now;
-	XTime_GetTime(&now);
-	printf("time is %llu\n", (unsigned long long)now);
+	if (initTimer() == 1){
+		_exit(2);
+	};
+	printf("init timer\n");
 
 	// if(rp_Init() != RP_OK){
 	// 	fprintf(stderr, "Rp api init failed!\n");
