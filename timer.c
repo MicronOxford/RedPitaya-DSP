@@ -37,7 +37,7 @@ int initTimer(){
 void XTime_SetTime(XTime Xtime_Global)
 {
 #ifdef USE_AMP
-	if(*(volatile uint32_t *)(TIMER_MMAP+GTIMER_CONTROL_OFFSET) & (u32)0x1){
+	if(*(volatile uint32_t *)(TIMER_MMAP+GTIMER_CONTROL_OFFSET) & (uint32_t)0x1){
 		// Timer is already enabled so don't reset it
 		return;
 	}

@@ -6,7 +6,7 @@
 #include <time.h>
 #include <sched.h>
 #include "timer.h"
-
+#include "rpouts.h"
 //#include "rp.h"
 
 #define MAXLINELEN 50
@@ -54,13 +54,14 @@ int main(int argc, char *argv[])
 	printf("hello, w\n");
 
 	if (initTimer() == 1){
+		printf("init timer failed\n");
 		_exit(2);
 	};
-	printf("init timer\n");
 
-	// if(rp_Init() != RP_OK){
-	// 	fprintf(stderr, "Rp api init failed!\n");
-	// }
+	if(initOuts() < 0){
+		fprintf(stderr, "Rp api init failed!\n");
+		_exit(2);
+	}
 
 	if (signal(SIGINT, sig_handler) == SIG_ERR){
   	printf("Signal handler failed\n");
@@ -125,10 +126,12 @@ int readActionTable(FILE *fp) {
 		bytes_read = getline(&line, &linelen, fp);
 		if (bytes_read <= 0){
 			printf("read %i lines of action table\n", lines_read);
+			free(line);
 			return 0;
 		}
 		if (readActionTableLine(line, currRow) < 0){
 			printf("readActionTableLine failed on %i\n", lines_read);
+			free(line);
 			return -1;
 		}
 		nextRow = (actionTable_t *)malloc(sizeof(actionTable_t));
@@ -178,14 +181,9 @@ int readActionTableLine(char *line, actionTable_t *tableEntry){
 
 /* need to add error handling on the clock */
 int execActionTable() {
-	struct timespec start, now;
-	long currsec = 0;
-	long currnano = 0;
-	long nanooffset;
-	long secsoverdue = -1;
-	long nsoverdue = -1;
-
-	float a_volts = 0;
+	printf("exec action table\n");
+	// float a_volts = 0;
+	out_setpins(0xFFFFFFFF);
   // rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
 	// rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
 	// rp_GenAmp(RP_CH_1, a_volts);
@@ -199,25 +197,25 @@ int execActionTable() {
 	 * need to be able to toggle pins simultainusly.
 	 * jitter from nanos comp - about 25us bleh - 1 jiffy?
 	 */
-	if (clock_gettime(CLOCK_MONOTONIC_RAW, &start) == -1)
-		return -1;
-	nanooffset = start.tv_nsec;
-	actionTable_t *currRow = table;
+	printf("faffing with actiontables\n");
+  actionTable_t *currRow = table;
+	XTime start = 0;
+	XTime now;
+	XTime_SetTime(start);
+	printf("set time\n");
+
+	// while (1){
+	// 	out_setpins(~out_getpins());
+	// 	XTime_GetTime(&now);
+	// }
+
 	while (1) {
-		if (clock_gettime(CLOCK_MONOTONIC_RAW, &now) == -1)
-			return -1;
-		currsec = (long)now.tv_sec-(long)start.tv_sec;
-		if (currsec == 0){
-			currnano = now.tv_nsec-nanooffset;
-		} else {
-			currnano = now.tv_nsec;
-		}
-		secsoverdue = currsec - currRow->secs;
-		nsoverdue = currnano - currRow->nanos;
-		// could possibly loop in the ns part once we are in the right second, to reduce wait time/jitter?
-		if (secsoverdue > 0 || (secsoverdue == 0 && nsoverdue > 0)){
+		XTime_GetTime(&now);
+		if ( (now - start)/COUNTS_PER_SECOND >= (currRow->secs * 1000000000L + currRow->nanos) ){
+			printf("running row\n");
 			if (currRow->pin >= 0){
 			  // rp_DpinSetState(currRow->pin, currRow->parameter);
+				out_setpins(currRow->pin);
 			} else {
 				// Analog outs are reprsented by negative pin nums
 				// and the voltage by a uint32_t
@@ -226,6 +224,7 @@ int execActionTable() {
 				// rp_GenAmp((currRow->pin*-1)-1, (float)currRow->parameter/INT_MAX);
 			}
 			if (currRow->next != NULL) {
+				printf("getting next row\n");
 				currRow = currRow->next;
 			} else {
 				return 0;
