@@ -27,8 +27,7 @@ typedef int ktime_t;
 uint32_t INT_MAX = UINT32_MAX;
 
 typedef struct actionTable {
-	long secs;
-	long nanos;
+	unsigned long long nanos;
 	int pin;
 	uint32_t parameter;
 	struct actionTable *next;
@@ -86,6 +85,7 @@ int main(int argc, char *argv[])
 		_exit(2);
 	}
 
+	printf("alloc action table\n");
 	table = (actionTable_t *) malloc(sizeof(actionTable_t));
 
 	if (readActionTable(fp) != 0){
@@ -122,6 +122,7 @@ int readActionTable(FILE *fp) {
 	actionTable_t *currRow = table;
 	actionTable_t *nextRow;
 
+
 	while (1) {
 		bytes_read = getline(&line, &linelen, fp);
 		if (bytes_read <= 0){
@@ -145,17 +146,12 @@ int readActionTable(FILE *fp) {
 }
 
 int readActionTableLine(char *line, actionTable_t *tableEntry){
-	char *stime_s;
+
 	char *nstime_s;
 	char *pin_s;
 	char *parameter_s;
 
-	stime_s = strtok(line, DELIM);
-	if (stime_s == NULL){
-		printf("action stime is NULL for '%s'\n", line);
-		return -1;
-	}
-	nstime_s = strtok(NULL, DELIM);
+	nstime_s = strtok(line, DELIM);  // REMINDER: first strtok call needs the str.
 	if (nstime_s == NULL){
 		printf("action nstime is NULL for '%s'\n", line);
 		return -1;
@@ -171,11 +167,10 @@ int readActionTableLine(char *line, actionTable_t *tableEntry){
 		return -1;
 	}
 
-	tableEntry->secs = strtoll(stime_s, NULL, 10);
-	tableEntry->nanos = strtoll(nstime_s, NULL, 10);
-	// tableEntry->pin = (rp_dpin_t)strtol(pin_s, NULL, 10);
+	tableEntry->nanos = strtoull(nstime_s, NULL, 10);
+	tableEntry->pin = strtol(pin_s, NULL, 10);
 	tableEntry->parameter = strtol(parameter_s, NULL, 10);
-	//printf("time:%lli pin:%i high:%i\n", tableEntry->time, tableEntry->pin, tableEntry->parameter);
+	printf("time:%llu pin:%i high:%i\n", tableEntry->nanos, tableEntry->pin, tableEntry->parameter);
 	return 0;
 }
 
@@ -211,8 +206,7 @@ int execActionTable() {
 
 	while (1) {
 		XTime_GetTime(&now);
-		if ( (now - start)/COUNTS_PER_SECOND >= (currRow->secs * 1000000000L + currRow->nanos) ){
-			printf("running row\n");
+		if ( (now - start) * 1000000000L/COUNTS_PER_SECOND >= currRow->nanos ){
 			if (currRow->pin >= 0){
 			  // rp_DpinSetState(currRow->pin, currRow->parameter);
 				out_setpins(currRow->pin);
@@ -224,7 +218,6 @@ int execActionTable() {
 				// rp_GenAmp((currRow->pin*-1)-1, (float)currRow->parameter/INT_MAX);
 			}
 			if (currRow->next != NULL) {
-				printf("getting next row\n");
 				currRow = currRow->next;
 			} else {
 				return 0;
