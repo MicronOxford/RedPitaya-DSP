@@ -184,7 +184,6 @@ int readActionTableLine(char *line, long lineno){
 int execActionTable(long lines) {
 	printf("exec action table\n");
 	// float a_volts = 0;
-	out_setpins(0xFFFFFFFF);
   // rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
 	// rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
 	// rp_GenAmp(RP_CH_1, a_volts);
