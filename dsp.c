@@ -46,7 +46,7 @@ void spinwait(int loops) {
 		t += 1;
 }
 
-actionTable_t *table;
+actionTable_t *table = NULL;
 
 int main(int argc, char *argv[])
 {
@@ -220,12 +220,7 @@ void sig_handler(int signo){
 }
 
 void _exit(int status) {
-	actionTable_t *next = table;
-	while (next != NULL) {
-		next = table->next;
-		free(table);
-		table = next;
-	}
+	free(table);
 	// rp_GenAmp(RP_CH_1, 0);
 	// rp_GenAmp(RP_CH_2, 0);
 	// rp_ApinReset();
