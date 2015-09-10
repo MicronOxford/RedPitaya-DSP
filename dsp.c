@@ -27,7 +27,7 @@ typedef int ktime_t;
 uint32_t INT_MAX = UINT32_MAX;
 
 typedef struct actionTable {
-	unsigned long long nanos;
+	unsigned long long clocks;
 	int pin;
 	uint32_t parameter;
 	struct actionTable *next;
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 		_exit(2);
 	}
 
-	long lines;
+	long lines = 0;
 	int ch;
 	while (EOF != (ch=getc(fp)))
 	    if (ch=='\n')
@@ -173,7 +173,7 @@ int readActionTableLine(char *line, long lineno){
 		return -1;
 	}
 
-	table[lineno].nanos = strtoull(nstime_s, NULL, 10);
+	table[lineno].clocks = strtoull(nstime_s, NULL, 10) * 1000000000L / COUNTS_PER_SECOND;
 	table[lineno].pin = strtol(pin_s, NULL, 10);
 	table[lineno].parameter = strtol(parameter_s, NULL, 10);
 	//printf("row: %lu time:%llu pin:%i high:%i\n", lineno, table[lineno].nanos, table[lineno].pin, table[lineno].parameter);
@@ -212,11 +212,13 @@ int execActionTable(long lines) {
 	XTime_SetTime(0);
 	XTime_GetTime(&now);
 	for (line = 0; line < lines; line++){
-		while ((now * 1000000000L/COUNTS_PER_SECOND) <= table[line].nanos) XTime_GetTime(&now);
+		while (now  <= table[line].clocks) XTime_GetTime(&now);
 		out_setpins(table[line].pin);
 	}
 	return 0;
 }
+
+
 
 void sig_handler(int signo){
   if (signo == SIGINT)
