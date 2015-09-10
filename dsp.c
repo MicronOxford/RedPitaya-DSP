@@ -102,6 +102,10 @@ int main(int argc, char *argv[])
 	}
 	printf("read action table file.\n");
 
+	// before we set ourselfves to more important than the terminal,
+	// flush.
+	fflush(stdout);
+
 	struct sched_param params;
 	params.sched_priority = 99;
 	if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
@@ -172,7 +176,7 @@ int readActionTableLine(char *line, long lineno){
 	table[lineno].nanos = strtoull(nstime_s, NULL, 10);
 	table[lineno].pin = strtol(pin_s, NULL, 10);
 	table[lineno].parameter = strtol(parameter_s, NULL, 10);
-	//printf("time:%llu pin:%i high:%i\n", table[lineno].nanos, table[lineno].pin, table[lineno].parameter);
+	//printf("row: %lu time:%llu pin:%i high:%i\n", lineno, table[lineno].nanos, table[lineno].pin, table[lineno].parameter);
 	return 0;
 }
 
@@ -195,10 +199,8 @@ int execActionTable(long lines) {
 	 * jitter from nanos comp - about 25us bleh - 1 jiffy?
 	 */
 	printf("faffing with actiontables\n");
-  actionTable_t *currRow = table;
-	XTime start = 0;
 	XTime now;
-	XTime_SetTime(start);
+
 	printf("set time\n");
 
 	// while (1){
@@ -207,9 +209,11 @@ int execActionTable(long lines) {
 	// }
 
 	long line;
+	XTime_SetTime(0);
+	XTime_GetTime(&now);
 	for (line = 0; line < lines; line++){
-		while ((now - start) * 1000000000L/COUNTS_PER_SECOND >= currRow->nanos) XTime_GetTime(&now);
-				out_setpins(table[line].pin);
+		while ((now * 1000000000L/COUNTS_PER_SECOND) <= table[line].nanos) XTime_GetTime(&now);
+		out_setpins(table[line].pin);
 	}
 	return 0;
 }
@@ -226,5 +230,6 @@ void _exit(int status) {
 	// rp_ApinReset();
 	// rp_DpinReset();
 	// rp_Release();
+	out_setpins(0);
 	exit(status);
 }
