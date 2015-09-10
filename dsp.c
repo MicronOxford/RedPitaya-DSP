@@ -7,7 +7,7 @@
 #include <sched.h>
 #include "timer.h"
 #include "rpouts.h"
-//#include "rp.h"
+#include "fpga_awg.h"
 
 #define MAXLINELEN 50
 #define MAXHANDLERLEN 5
@@ -29,8 +29,8 @@ uint32_t INT_MAX = UINT32_MAX;
 typedef struct actionTable {
 	unsigned long long clocks;
 	int pin;
-	uint32_t parameter;
-	struct actionTable *next;
+	uint32_t a1;
+	uint32_t a2;
 } actionTable_t;
 
 
@@ -59,6 +59,11 @@ int main(int argc, char *argv[])
 
 	if(initOuts() < 0){
 		fprintf(stderr, "Rp api init failed!\n");
+		_exit(2);
+	}
+
+	if(fpga_awg_init() != 0){
+		fprintf(stderr, "FPGA init failed!\n");
 		_exit(2);
 	}
 
@@ -155,7 +160,8 @@ int readActionTableLine(char *line, long lineno){
 
 	char *nstime_s;
 	char *pin_s;
-	char *parameter_s;
+	char *a1_s;
+	char *a2_s;
 
 	nstime_s = strtok(line, DELIM);  // REMINDER: first strtok call needs the str.
 	if (nstime_s == NULL){
@@ -167,15 +173,20 @@ int readActionTableLine(char *line, long lineno){
 		printf("pin is NULL for %s\n", line);
 		return -1;
 	}
-	parameter_s = strtok(NULL, DELIM);
-	if (parameter_s == NULL){
-		printf("parameter_s is NULL for %s", line);
+	a1_s = strtok(NULL, DELIM);
+	if (a1_s == NULL){
+		printf("a1_s is NULL for %s", line);
 		return -1;
 	}
-
+	a2_s = strtok(NULL, DELIM);
+	if (a2_s == NULL){
+		printf("a2_s is NULL for %s", line);
+		return -1;
+	}
 	table[lineno].clocks = strtoull(nstime_s, NULL, 10) * 1000000000L / COUNTS_PER_SECOND;
 	table[lineno].pin = strtol(pin_s, NULL, 10);
-	table[lineno].parameter = strtol(parameter_s, NULL, 10);
+	table[lineno].a1 = strtol(a1_s, NULL, 10);
+	table[lineno].a2 = strtol(a2_s, NULL, 10);
 	//printf("row: %lu time:%llu pin:%i high:%i\n", lineno, table[lineno].nanos, table[lineno].pin, table[lineno].parameter);
 	return 0;
 }
@@ -213,6 +224,8 @@ int execActionTable(long lines) {
 	for (line = 0; line < lines; line++){
 		while (now  <= table[line].clocks) XTime_GetTime(&now);
 		out_setpins(table[line].pin);
+		fpga_awg_write_val_a(table[line].a1);
+		fpga_awg_write_val_b(table[line].a2);
 	}
 	return 0;
 }
@@ -232,5 +245,6 @@ void _exit(int status) {
 	// rp_DpinReset();
 	// rp_Release();
 	out_setpins(0);
+	fpga_awg_exit();
 	exit(status);
 }
