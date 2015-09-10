@@ -34,9 +34,9 @@ typedef struct actionTable {
 } actionTable_t;
 
 
-int readActionTable(FILE *fp);
-int readActionTableLine(char *line, actionTable_t *tableEntry);
-int execActionTable();
+int readActionTable(FILE *fp, long lines);
+int readActionTableLine(char *line, long lineno);
+int execActionTable(long lines);
 void sig_handler(int signo);
 void _exit(int status);
 
@@ -85,10 +85,18 @@ int main(int argc, char *argv[])
 		_exit(2);
 	}
 
-	printf("alloc action table\n");
-	table = (actionTable_t *) malloc(sizeof(actionTable_t));
+	long lines;
+	int ch;
+	while (EOF != (ch=getc(fp)))
+	    if (ch=='\n')
+	        ++lines;
+	printf("actiontable is %lu lines long\n", lines);
+	rewind(fp);
 
-	if (readActionTable(fp) != 0){
+	printf("alloc action table\n");
+	table = malloc(sizeof(actionTable_t)*lines);
+
+	if (readActionTable(fp, lines) != 0){
 		printf("Failed to read action table file.\n");
 		_exit(3);
 	}
@@ -101,7 +109,7 @@ int main(int argc, char *argv[])
 		_exit(4);
 	}
 
-	int execstatus = execActionTable();
+	int execstatus = execActionTable(lines);
 	if (execstatus < 0) {
 		printf("Failed to exec action table (%i).\n", execstatus);
 		_exit(4);
@@ -113,39 +121,33 @@ int main(int argc, char *argv[])
 
 /******************************************************************************/
 
-int readActionTable(FILE *fp) {
+int readActionTable(FILE *fp, long lines) {
 	int bytes_read = 0;
-	int lines_read = 0;
+	long lineno = 0;
 	size_t linelen = (size_t)MAXLINELEN;
-	char *line;
-	line = (char *) malloc(sizeof(char)*(linelen+1));
-	actionTable_t *currRow = table;
-	actionTable_t *nextRow;
+	char *linestr;
+	linestr = (char *) malloc(sizeof(char)*(linelen+1));
 
-
-	while (1) {
-		bytes_read = getline(&line, &linelen, fp);
+	for (lineno = 0; lineno < lines; lineno++){
+		bytes_read = getline(&linestr, &linelen, fp);
 		if (bytes_read <= 0){
-			printf("read %i lines of action table\n", lines_read);
-			free(line);
-			return 0;
-		}
-		if (readActionTableLine(line, currRow) < 0){
-			printf("readActionTableLine failed on %i\n", lines_read);
-			free(line);
+			printf("read %lu lines of action table, but was empty\n", lineno);
+			free(linestr);
 			return -1;
 		}
-		nextRow = (actionTable_t *)malloc(sizeof(actionTable_t));
+		if (readActionTableLine(linestr, lineno) < 0){
+			printf("readActionTableLine failed on %lu\n", lineno);
+			free(linestr);
+			return -1;
+		}
 		//printf("malloc for line %i, addr %p\n", lines_read, nextRow);
-		nextRow->next = (actionTable_t *)0;
-		currRow->next = nextRow;
-		currRow = nextRow;
 		//printf("done  \n");
-		lines_read += 1;
 	}
+	free(linestr);
+	return 0;
 }
 
-int readActionTableLine(char *line, actionTable_t *tableEntry){
+int readActionTableLine(char *line, long lineno){
 
 	char *nstime_s;
 	char *pin_s;
@@ -167,15 +169,15 @@ int readActionTableLine(char *line, actionTable_t *tableEntry){
 		return -1;
 	}
 
-	tableEntry->nanos = strtoull(nstime_s, NULL, 10);
-	tableEntry->pin = strtol(pin_s, NULL, 10);
-	tableEntry->parameter = strtol(parameter_s, NULL, 10);
-	printf("time:%llu pin:%i high:%i\n", tableEntry->nanos, tableEntry->pin, tableEntry->parameter);
+	table[lineno].nanos = strtoull(nstime_s, NULL, 10);
+	table[lineno].pin = strtol(pin_s, NULL, 10);
+	table[lineno].parameter = strtol(parameter_s, NULL, 10);
+	//printf("time:%llu pin:%i high:%i\n", table[lineno].nanos, table[lineno].pin, table[lineno].parameter);
 	return 0;
 }
 
 /* need to add error handling on the clock */
-int execActionTable() {
+int execActionTable(long lines) {
 	printf("exec action table\n");
 	// float a_volts = 0;
 	out_setpins(0xFFFFFFFF);
@@ -204,28 +206,12 @@ int execActionTable() {
 	// 	XTime_GetTime(&now);
 	// }
 
-	while (1) {
-		XTime_GetTime(&now);
-		if ( (now - start) * 1000000000L/COUNTS_PER_SECOND >= currRow->nanos ){
-			if (currRow->pin >= 0){
-			  // rp_DpinSetState(currRow->pin, currRow->parameter);
-				out_setpins(currRow->pin);
-			} else {
-				// Analog outs are reprsented by negative pin nums
-				// and the voltage by a uint32_t
-				// convert channel from [-1, -2] to [0, 1]
-				// and 2**31 to 0.5
-				// rp_GenAmp((currRow->pin*-1)-1, (float)currRow->parameter/INT_MAX);
-			}
-			if (currRow->next != NULL) {
-				currRow = currRow->next;
-			} else {
-				return 0;
-				//clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-				//currRow = table;
-			}
-		}
+	long line;
+	for (line = 0; line < lines; line++){
+		while ((now - start) * 1000000000L/COUNTS_PER_SECOND >= currRow->nanos) XTime_GetTime(&now);
+				out_setpins(table[line].pin);
 	}
+	return 0;
 }
 
 void sig_handler(int signo){
