@@ -22,6 +22,8 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 root.addHandler(ch)
 
+from PyRedPitaya.board import RedPitaya
+
 BASE            = 0xFFFF9000
 COMM_RX_AT_ROWS = 0x10
 COMM_RX_AT_FLAG = 0x14
@@ -80,6 +82,11 @@ class rpServer(object):
         self.analogB = []
 
         self.DSPRunner = Runner()
+        self.board = RedPitaya()
+
+        # single value output
+        self.board.asga.counter_wrap = self.board.asga.counter_step
+        self.board.asgb.counter_wrap = self.board.asgb.counter_step
 
     # The dsp has a handler for SIGINT that cleans up
     def Abort(self):
@@ -88,10 +95,16 @@ class rpServer(object):
         self.DSPRunner.abort()
 
     def MoveAbsoluteADU(self, aline, aduPos):
+        print("aline:", aline, "pos",aduPos)
         # probably just use the python lib
         # volts to ADU's for the DSP card: int(pos * 6553.6))
         # Bu we won't be hooked up to the stage?
-        pass
+        if aline == 0:
+            self.board.asga.data = [aduPos]
+        if aline == 1:
+            self.board.asgb.data = [aduPos]
+        else:
+            print("aline {}>1".format(aline))
 
     def arcl(self, cameraMask, lightTimePairs):
         # wha?
@@ -127,7 +140,7 @@ class rpServer(object):
         pass
 
     def WriteDigital(self, level):
-        self.red_pitaya.hk.led = level
+        self.board.hk.led = level
 
     def demo(self, dt):
         self.DSPRunner.loadDemo(dt)
