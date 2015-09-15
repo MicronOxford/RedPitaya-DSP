@@ -35,6 +35,7 @@ dsp: objs/dsp.o objs/timer.o objs/rpouts.o objs/fpga_awg.o
 server: src/server.py
 	mkdir -p build/bin
 	cp src/server.py build/bin/server
+	chmod +x build/bin/server
 
 rpos: tmp build
 	wget $(OS) -O tmp/ecosystem-0.92-0-devbuild.zip
