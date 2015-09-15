@@ -5,11 +5,26 @@ import subprocess
 import os
 import time
 
+import logging
+import sys
+logging.basicConfig()  # or your own sophisticated setup
+logging.getLogger("Pyro4").setLevel(logging.DEBUG)
+logging.getLogger("Pyro4.core").setLevel(logging.DEBUG)
+# ... set level of other logger names as desired ...
+
+root = logging.getLogger()
+root.setLevel(logging.DEBUG)
+
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+root.addHandler(ch)
+
 BASE            = 0xFFFF9000
 COMM_RX_AT_ROWS = 0x10
 COMM_RX_AT_FLAG = 0x14
 COMM_RX_AT      = 0x18
-
 
 def bin(s):
     ''' Returns the set bits in a positive int as a str.'''
@@ -78,7 +93,7 @@ class rpServer(object):
 
     def arcl(self, cameraMask, lightTimePairs):
         # wha?
-        # takes a photo
+        # takes a image
         pass
 
     def profileSet(self, profileStr, digitals, *analogs):
@@ -115,7 +130,10 @@ if __name__ == '__main__':
     print("providing dsp.d() as [pyroDSP] on port 7766")
     print("Started program at",time.strftime("%A, %B %d, %I:%M %p"))
 
+    Pyro4.config.SERIALIZER = 'pickle'
+    Pyro4.config.SERIALIZERS_ACCEPTED = set(['pickle'])
+
     import random
-    daemon = Pyro4.Daemon(port = random.randint(2000, 10000), host = '192.168.1.100')
+    daemon = Pyro4.Daemon(port = random.randint(2000, 10000), host = '192.168.1.101')
     Pyro4.Daemon.serveSimple({dsp: 'pyroDSP'},
             daemon = daemon, ns = False, verbose = True)
