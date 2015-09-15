@@ -49,9 +49,9 @@ class Runner(object):
                 t += dt
 
     def load(self, times, digitals, analogA, analogB):
+        print("in load", times)
         with open(self.filename, 'w') as f:
-            for row in zip(times, digitals, analogA, analogB):
-                nanos = time * 1e9
+            for row in zip([int(t) * 1e9 for t in times], digitals, analogA, analogB):
                 print('{} {} {} {}'.format(*row), file=f)
 
     def abort(self):
@@ -82,6 +82,7 @@ class rpServer(object):
 
     # The dsp has a handler for SIGINT that cleans up
     def Abort(self):
+        print("abort")
         # kill the server process
         self.DSPRunner.abort()
 
@@ -97,24 +98,31 @@ class rpServer(object):
         pass
 
     def profileSet(self, profileStr, digitals, *analogs):
+        print("profileSet")
+        print("values recv")
+        print(profileStr, digitals, *analogs)
         # This is downloading the action table
         # digitals is numpy.zeros((len(times), 2), dtype = numpy.uint32),
         # starting at 0 -> [times for digital signal changes, digital lines]
         # analogs is a list of analog lines and the values to put on them at each time
-        self.times, self.digitals = zip(*digitals)
+        self.times, self.digitals = digitals
         self.analogA = analogs[0]
         self.analogB = analogs[1]
 
     def DownloadProfile(self): # This is saving the action table
+        print("DownloadProfile")
         self.DSPRunner.load(self.times, self.digitals, self.analogA, self.analogB)
 
     def InitProfile(self, numReps):
+        print("InitProfile")
         self.times, self.digitals, self.analogA, self.analogB = [], [], [], []
 
     def trigCollect(self):
+        print("trigCollect")
         self.DSPRunner.start()
+        # needs to block on the dsp finishing
 
-    def ReadPosition(self):
+    def ReadPosition(self, axis):
         pass
 
     def WriteDigital(self, level):
@@ -124,6 +132,9 @@ class rpServer(object):
         self.DSPRunner.loadDemo(dt)
         self.DSPRunner.start()
 
+    def receiveClient(self, uri):
+        print(uri)
+
 if __name__ == '__main__':
     dsp = rpServer()
 
@@ -131,9 +142,9 @@ if __name__ == '__main__':
     print("Started program at",time.strftime("%A, %B %d, %I:%M %p"))
 
     Pyro4.config.SERIALIZER = 'pickle'
-    Pyro4.config.SERIALIZERS_ACCEPTED = set(['pickle'])
+    Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 
     import random
-    daemon = Pyro4.Daemon(port = random.randint(2000, 10000), host = '192.168.1.101')
+    daemon = Pyro4.Daemon(port = random.randint(2000, 10000), host = '192.168.1.100')
     Pyro4.Daemon.serveSimple({dsp: 'pyroDSP'},
             daemon = daemon, ns = False, verbose = True)
