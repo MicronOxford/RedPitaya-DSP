@@ -44,5 +44,8 @@ rpos: tmp build
 atest: Atest.c
 	$(CC) $(CFLAGS) -O0 Atest.c fpga_awg.c -lm -o atest $(LNK)
 
+scp:
+	scp build/bin/server build/bin/dsp root@$(IP):/tmp/
+
 clean:
 	rm -rf dsp atest *.o include/*.o libxil.so *.a objs/ bin/ tmp/ build/
