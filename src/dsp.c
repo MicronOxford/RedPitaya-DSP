@@ -16,14 +16,6 @@
 
 char ERRVAL[] = "/n";
 
-/*
-int ktime_get(void){
-	return 0;
-}
-
-typedef int ktime_t;
-*/
-
 uint32_t INT_MAX = UINT32_MAX;
 
 typedef struct actionTable {
@@ -73,11 +65,6 @@ int main(int argc, char *argv[])
 
 	printf("hello, world!\n");
 
-	/* jitter is about 2us with peaks of 40us */
-	/* with spinwait, jitter is approx 100ns peak
-     * as long as it does not accumulate this is probably ok
-     */
-
 	if (argc != 2) {
 		printf("USAGE: dsp ACTIONTABLEFILE\n");
 		_exit(1);
@@ -107,7 +94,7 @@ int main(int argc, char *argv[])
 	}
 	printf("read action table file.\n");
 
-	// before we set ourselfves to more important than the terminal,
+	// before we set ourselves to more important than the terminal,
 	// flush.
 	fflush(stdout);
 
