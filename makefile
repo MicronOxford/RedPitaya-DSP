@@ -7,7 +7,7 @@ PREFIX=arm-linux-gnueabi-
 CC=$(PREFIX)gcc
 
 PYTHONLIBS=build/usr/lib/Python2.7
-PYTHONPACKAGES=Pyro4 PyRedPitaya serpent
+PYTHONPACKAGES=PyRedPitaya Pyro4==4.28 serpent
 
 all: dsp server rpos pythonpackages
 
