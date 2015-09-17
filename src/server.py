@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import Pyro4
 import subprocess
+import threading
 import os
 import time
 
@@ -34,6 +35,26 @@ def bin(s):
     ''' Returns the set bits in a positive int as a str.'''
     return str(s) if s<=1 else bin(s>>1) + str(s&1)
 
+from types import FunctionType
+from functools import wraps
+
+def printfunc(func):
+    @wraps(func)
+    def wrapped(*args, **kwrds):
+        print(func)
+        return func(*args, **kwrds)
+    return wrapped
+
+class PrintMetaClass(type):
+    def __new__(meta, classname, bases, classDict):
+        newClassDict = {}
+        for attributeName, attribute in classDict.items():
+            if type(attribute) == FunctionType:
+                # replace it with a wrapped version
+                attribute = printfunc(attribute)
+            newClassDict[attributeName] = attribute
+        return type.__new__(meta, classname, bases, newClassDict)
+
 
 class Runner(object):
 
@@ -55,7 +76,6 @@ class Runner(object):
         self.writtenActionTable = True
 
     def load(self, actiontable):
-        print("in load")
         with open(self.filename, 'w') as f:
             for row in actiontable:
                 time, digitals, a1, a2 = row
@@ -86,6 +106,8 @@ class Runner(object):
 
 class rpServer(object):
 
+    __metaclass__ = PrintMetaClass
+
     def __init__(self):
         self.pid = None
         self.name = None
@@ -104,14 +126,16 @@ class rpServer(object):
         self.board.hk.expansion_connector_direction_P = 0xFF # set all pins to out
         self.board.hk.expansion_connector_direction_N = 0xFF
 
+        # self.arclLock = threading.Lock()
+
     # The dsp has a handler for SIGINT that cleans up
     def Abort(self):
-        print("abort")
         # kill the server process
         self.DSPRunner.abort()
+        self.board.hk.expansion_connector_output_P = 0
+        self.board.hk.expansion_connector_output_N = 0
 
     def MoveAbsoluteADU(self, aline, aduPos):
-        print("aline:", aline, "pos",aduPos)
         # probably just use the python lib
         # volts to ADU's for the DSP card: int(pos * 6553.6))
         # Bu we won't be hooked up to the stage?
@@ -123,61 +147,61 @@ class rpServer(object):
             print("aline {}>1".format(aline))
 
     def arcl(self, cameraMask, lightTimePairs):
-        print("arcl")
-        print("cameras:", cameraMask, "lightimePais:", lightTimePairs)
-
         if len(lightTimePairs) == 0:
             print("no lights were enabled")
             return
 
-        digitals = []
-        digitals.append([lightTimePairs[0][1], cameraMask])
-        digitals.append([lightTimePairs[-1][1], cameraMask]) # turn the cams on and off
-
-        for lighttimepair in lightTimePairs:
-            digitals.append(list(lighttimepair))
-
-        self.profileSet("", digitals)
-        self.trigCollect()
-        # wha?
-        # takes a image
-        pass
+        lighttime = lightTimePairs[-1]
+        self.board.hk.expansion_connector_output_P = lighttime[0]
+        time.sleep(lighttime[1]/1000.)
+        self.board.hk.expansion_connector_output_N = cameraMask >> 8
+        self.board.hk.expansion_connector_output_N = 0
+        self.board.hk.expansion_connector_output_P = 0
 
     def profileSet(self, profileStr, digitals, *analogs):
-        try:
-            print("profileSet")
-            print("called with")
-            print(profileStr, '\n', digitals, '\n', *analogs)
-            # This is downloading the action table
-            # digitals is numpy.zeros((len(times), 2), dtype = numpy.uint32),
-            # starting at 0 -> [times for digital signal changes, digital lines]
-            # analogs is a list of analog lines and the values to put on them at each time
-            # digitals = list of lists. sublist is a time, line pair
-            # then 4 analog lines. also list of time: value pairs.
-            Dtimes, dvals = zip(*digitals)
-            Atimes, Avals = zip(*analogs[0]) if len(analogs) > 0 else ([], [])
-            Btimes, Bvals = zip(*analogs[1]) if len(analogs) > 1 else ([], [])
+        print("profileset called with")
+        print("analog0", analogs[0], "times", zip(*analogs[0])[0], "vals", zip(*analogs[0])[1])
+        # This is downloading the action table
+        # digitals is numpy.zeros((len(times), 2), dtype = numpy.uint32),
+        # starting at 0 -> [times for digital signal changes, digital lines]
+        # analogs is a list of analog lines and the values to put on them at each time
+        # digitals = list of lists. sublist is a time, line pair
+        # then 4 analog lines. also list of time: value pairs.
+        Dtimes, Dvals = zip(*digitals)
+        if len(analogs) > 0:
+            Atimes, Avals = zip(*analogs[0])
+        else:
+            Atimes, Avals = [], []
+        if len(analogs) > 0:
+            Btimes, Bvals = zip(*analogs[1])
+        else:
+            Btimes, Bvals = [], []
 
-            times, digitals, analogA, analogB = [], [], [], []
-            times = set(Dtimes+Atimes+Btimes)
-            for timepoint in times:
-                self.times.append(timepoint)
-                for outline, inval, timesForLine in [(digitals, dvals, Dtimes),
-                                                     (analogA,  Avals, Atimes),
-                                                     (analogB,  Bvals, Btimes)]:
-                    if timepoint in timesForLine:
-                        outline.append(inval[timesForLine.index(timepoint)])
-                    else:
-                        prevValue = outline[-1] if outline else 0
-                        outline.append(prevValue) # the last value
+        Dtimes = list(Dtimes)
+        Atimes = list(Atimes)
+        Btimes = list(Btimes)
 
-            self.actiontable = zip(times, digitals, analogA, analogB)
-            print("sort")
-            self.actiontable.sort(key=lambda row: row[0])
-        except Exception as e:
-            print(e)
-            print(traceback.format_exc())
-            raise e
+        print("dt:{},\n at:{},\n bt:{}".format(Dtimes, Atimes, Btimes))
+        print()
+        print()
+        print("dv:{},\n av:{},\n bv:{}".format(Dvals, Avals, Bvals))
+
+        times, digitals, analogA, analogB = [], [], [], []
+        times = sorted(list(set(Dtimes+Atimes+Btimes)))
+        for timepoint in times:
+            self.times.append(timepoint)
+            for outline, inval, timesForLine in [(digitals, Dvals, Dtimes),
+                                                 (analogA,  Avals, Atimes),
+                                                 (analogB,  Bvals, Btimes)]:
+                if timepoint in timesForLine:
+                    outline.append(inval[timesForLine.index(timepoint)])
+                else:
+                    prevValue = outline[-1] if outline else 0
+                    outline.append(prevValue) # the last value
+
+        self.actiontable = zip(times, digitals, analogA, analogB)
+        print("sort")
+        self.actiontable.sort(key=lambda row: row[0])
 
 
     def DownloadProfile(self): # This is saving the action table
@@ -187,13 +211,14 @@ class rpServer(object):
     def InitProfile(self, numReps):
         print("InitProfile")
         # I'm pretty sure this does not zero the prev values.
+        # is it for allocating space?
         #self.times, self.digitals, self.analogA, self.analogB = [], [], [], []
 
     def trigCollect(self):
         print("trigCollect")
         process = self.DSPRunner.start()
         process.wait()
-        # needs to block on the dsp finishing
+        # needs to block on the dsp finishing.
 
     def ReadPosition(self, axis):
         if axis == 0:
