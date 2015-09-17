@@ -20,7 +20,8 @@ uint32_t INT_MAX = UINT32_MAX;
 
 typedef struct actionTable {
 	unsigned long long clocks;
-	int pin;
+	int pinP;
+	int pinN;
 	uint32_t a1;
 	uint32_t a2;
 } actionTable_t;
@@ -146,7 +147,8 @@ int readActionTable(FILE *fp, long lines) {
 int readActionTableLine(char *line, long lineno){
 
 	char *nstime_s;
-	char *pin_s;
+	char *pinP_s;
+	char *pinN_s;
 	char *a1_s;
 	char *a2_s;
 
@@ -155,9 +157,14 @@ int readActionTableLine(char *line, long lineno){
 		printf("action nstime is NULL for '%s'\n", line);
 		return -1;
 	}
-	pin_s = strtok(NULL, DELIM);
-	if (pin_s == NULL){
-		printf("pin is NULL for %s\n", line);
+	pinP_s = strtok(NULL, DELIM);
+	if (pinP_s == NULL){
+		printf("pinP is NULL for %s\n", line);
+		return -1;
+	}
+	pinN_s = strtok(NULL, DELIM);
+	if (pinN_s == NULL){
+		printf("pinN is NULL for %s\n", line);
 		return -1;
 	}
 	a1_s = strtok(NULL, DELIM);
@@ -171,10 +178,11 @@ int readActionTableLine(char *line, long lineno){
 		return -1;
 	}
 	table[lineno].clocks = strtoull(nstime_s, NULL, 10) * 1000000000L / COUNTS_PER_SECOND;
-	table[lineno].pin = strtol(pin_s, NULL, 10);
+	table[lineno].pinP = strtol(pinP_s, NULL, 10);
+	table[lineno].pinN = strtol(pinN_s, NULL, 10);
 	table[lineno].a1 = strtol(a1_s, NULL, 10);
 	table[lineno].a2 = strtol(a2_s, NULL, 10);
-	//printf("row: %lu time:%llu pin:%i high:%i\n", lineno, table[lineno].nanos, table[lineno].pin, table[lineno].parameter);
+	printf("row: %lu time:%llu pinP:%i pinN:%i a1:%i\n", lineno, table[lineno].clocks, table[lineno].pinP, table[lineno].pinN, table[lineno].a1);
 	return 0;
 }
 
@@ -199,7 +207,8 @@ int execActionTable(long lines) {
 	XTime_GetTime(&now);
 	for (line = 0; line < lines; line++){
 		while (now  <= table[line].clocks) XTime_GetTime(&now);
-		out_setpins(table[line].pin);
+		out_setpins_P(table[line].pinP);
+		out_setpins_N(table[line].pinN);
 		fpga_awg_write_val_a(table[line].a1);
 		fpga_awg_write_val_b(table[line].a2);
 	}
@@ -220,7 +229,8 @@ void _exit(int status) {
 	// rp_ApinReset();
 	// rp_DpinReset();
 	// rp_Release();
-	out_setpins(0);
+	out_setpins_P(0);
+	out_setpins_N(0);
 	fpga_awg_exit();
 	exit(status);
 }

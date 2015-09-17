@@ -47,17 +47,21 @@ class Runner(object):
             n = 100000
             t = 0
             for l in range(n):
-                print('{} {} {} {}'.format( t, 0, 0, l*4000./n ), file=f)
+                print('{} {} {} {} {}'.format( t, 0, 0, 0, l*4000./n ), file=f)
                 t += dt
-                print('{} {} {} {}'.format( t, 0x000000FF, 4000, l*4000./n ), file=f)
+                print('{} {} {} {} {}'.format( t, 0x000000FF, 0x000000FF, 4000, l*4000./n ), file=f)
                 t += dt
+        self.writtenActionTable = True
 
     def load(self, actiontable):
         print("in load")
         with open(self.filename, 'w') as f:
             for row in actiontable:
-                print('time:{} digital:{} a1:{} a2:{}'.format(*row))
-                print('{} {} {} {}'.format(*row), file=f)
+                time, digitals, a1, a2 = row
+                dP, dN = digitals & int('11111111111', 2), (digitals & int('1111111100000000', 2)) >> 8
+                finalrow = time, dP, dN, a1, a2
+                print('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
+                print('{} {} {} {} {}'.format(*finalrow), file=f)
         self.writtenActionTable = True
 
     def abort(self):

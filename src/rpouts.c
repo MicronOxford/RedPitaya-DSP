@@ -34,12 +34,18 @@ int initOuts(){
   }
 
   *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_DIR) = 0xFFFFFFFF;
-  out_setpins(0);
+  *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_DIR) = 0xFFFFFFFF;
+  out_setpins_P(0);
+  out_setpins_N(0);
   return 0;
 }
 
-inline void out_setpins(int pins){
+inline void out_setpins_P(int pins){
   *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT) = pins;
+}
+
+inline void out_setpins_N(int pins){
+  *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT) = pins;
 }
 
 uint32_t out_getpins(){
