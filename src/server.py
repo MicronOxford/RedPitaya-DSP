@@ -7,6 +7,7 @@ import os
 import time
 
 import logging
+import traceback
 import sys
 logging.basicConfig()  # or your own sophisticated setup
 logging.getLogger("Pyro4").setLevel(logging.DEBUG)
@@ -58,7 +59,7 @@ class Runner(object):
         with open(self.filename, 'w') as f:
             for row in actiontable:
                 time, digitals, a1, a2 = row
-                dP, dN = digitals & int('11111111111', 2), (digitals & int('1111111100000000', 2)) >> 8
+                dP, dN = digitals & int('11111111', 2), (digitals & int('1111111100000000', 2)) >> 8
                 finalrow = time, dP, dN, a1, a2
                 print('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
                 print('{} {} {} {} {}'.format(*finalrow), file=f)
@@ -121,6 +122,20 @@ class rpServer(object):
     def arcl(self, cameraMask, lightTimePairs):
         print("arcl")
         print("cameras:", cameraMask, "lightimePais:", lightTimePairs)
+
+        if len(lightTimePairs) == 0:
+            print("no lights were enabled")
+            return
+
+        digitals = []
+        digitals.append([lightTimePairs[0][1], cameraMask])
+        digitals.append([lightTimePairs[-1][1], cameraMask]) # turn the cams on and off
+
+        for lighttimepair in lightTimePairs:
+            digitals.append(list(lighttimepair))
+
+        self.profileSet("", digitals)
+        self.trigCollect()
         # wha?
         # takes a image
         pass
@@ -137,9 +152,8 @@ class rpServer(object):
             # digitals = list of lists. sublist is a time, line pair
             # then 4 analog lines. also list of time: value pairs.
             Dtimes, dvals = zip(*digitals)
-            Atimes, Avals = zip(*analogs[0])
-            Btimes, Bvals = zip(*analogs[0])
-
+            Atimes, Avals = zip(*analogs[0]) if len(analogs) > 0 else ([], [])
+            Btimes, Bvals = zip(*analogs[1]) if len(analogs) > 1 else ([], [])
 
             times, digitals, analogA, analogB = [], [], [], []
             times = set(Dtimes+Atimes+Btimes)
@@ -151,13 +165,15 @@ class rpServer(object):
                     if timepoint in timesForLine:
                         outline.append(inval[timesForLine.index(timepoint)])
                     else:
-                        outline.append( inval[len(outline)-1] ) # the last value
+                        prevValue = outline[-1] if outline else 0
+                        outline.append(prevValue) # the last value
 
             self.actiontable = zip(times, digitals, analogA, analogB)
             print("sort")
             self.actiontable.sort(key=lambda row: row[0])
         except Exception as e:
             print(e)
+            print(traceback.format_exc())
             raise e
 
 
@@ -185,7 +201,10 @@ class rpServer(object):
             return 0 # FIXME
 
     def WriteDigital(self, level):
-        self.board.hk.led = level
+        dP, dN = level & int('11111111', 2), (level & int('1111111100000000', 2)) >> 8
+        self.board.hk.led = level & int('11111111', 2) # 7 led's
+        self.board.hk.expansion_connector_output_P = dP
+        self.board.hk.expansion_connector_output_N = dN
 
     def demo(self, dt):
         self.DSPRunner.loadDemo(dt)
