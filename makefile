@@ -1,11 +1,15 @@
 CFLAGS=-Wall -g -O2 -I./include
 IP=192.168.1.100
+# Could also build this from source, https://github.com/clade/RedPitaya
 OS=http://clade.pierre.free.fr/python-on-red-pitaya/ecosystem-0.92-0-devbuild.zip
 
 PREFIX=arm-linux-gnueabi-
 CC=$(PREFIX)gcc
 
-all: dsp server rpos
+PYTHONLIBS=build/usr/lib/Python2.7
+PYTHONPACKAGES=Pyro4 PyRedPitaya serpent
+
+all: dsp server rpos pythonpackages
 
 objs:
 	mkdir objs
@@ -41,6 +45,11 @@ rpos: tmp build
 	wget $(OS) -O tmp/ecosystem-0.92-0-devbuild.zip
 	unzip tmp/ecosystem-0.92-0-devbuild.zip -d build/
 
+pythonpackages: rpos
+	# we need pyro and he red pitaya libs, --no-deps as they are both satisfied
+	# allreday on the RP but pip could not know this
+	pip install -t $(PYTHONLIBS) --no-dependencies $(PYTHONPACKAGES)
+
 atest: Atest.c
 	$(CC) $(CFLAGS) -O0 Atest.c fpga_awg.c -lm -o atest $(LNK)
 
@@ -48,4 +57,4 @@ scp:
 	scp build/bin/server build/bin/dsp root@$(IP):/tmp/
 
 clean:
-	rm -rf dsp atest *.o include/*.o libxil.so *.a objs/ bin/ tmp/ build/
+	rm -rf dsp atest *.o include/*.o libxil.so *.a objs/ bin/ build/
