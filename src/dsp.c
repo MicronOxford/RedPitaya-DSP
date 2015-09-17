@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 	int execstatus = execActionTable(lines);
 	if (execstatus < 0) {
 		printf("Failed to exec action table (%i).\n", execstatus);
-		_exit(4);
+		_exit(5);
 	}
 	printf("exec action table done.\n");
 
@@ -189,21 +189,10 @@ int execActionTable(long lines) {
 	// rp_GenOutEnable(RP_CH_1);
 	// rp_GenOutEnable(RP_CH_2);
 
-	/* approx. jitter caused by clock_gettime and the context switch is about 500ns
-	 * 10x worse than cycle counting.
-	 * peak freq. obtainable using this is 270KHz - 2us bwteen signal events.
-	 * need to be able to toggle pins simultainusly.
-	 * jitter from nanos comp - about 25us bleh - 1 jiffy?
-	 */
 	printf("faffing with actiontables\n");
 	XTime now;
 
 	printf("set time\n");
-
-	// while (1){
-	// 	out_setpins(~out_getpins());
-	// 	XTime_GetTime(&now);
-	// }
 
 	long line;
 	XTime_SetTime(0);
