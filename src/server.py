@@ -101,6 +101,9 @@ class rpServer(object):
         self.board.asga.counter_wrap = self.board.asga.counter_step
         self.board.asgb.counter_wrap = self.board.asgb.counter_step
 
+        self.board.hk.expansion_connector_direction_P = 0xFF # set all pins to out
+        self.board.hk.expansion_connector_direction_N = 0xFF
+
     # The dsp has a handler for SIGINT that cleans up
     def Abort(self):
         print("abort")
