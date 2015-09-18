@@ -126,7 +126,7 @@ class rpServer(object):
         self.board.hk.expansion_connector_direction_P = 0xFF # set all pins to out
         self.board.hk.expansion_connector_direction_N = 0xFF
 
-        # self.arclLock = threading.Lock()
+        self.clientConnection = None
 
     # The dsp has a handler for SIGINT that cleans up
     def Abort(self):
@@ -205,19 +205,19 @@ class rpServer(object):
 
 
     def DownloadProfile(self): # This is saving the action table
-        print("DownloadProfile")
         self.DSPRunner.load(self.actiontable)
 
     def InitProfile(self, numReps):
-        print("InitProfile")
         # I'm pretty sure this does not zero the prev values.
         # is it for allocating space?
         #self.times, self.digitals, self.analogA, self.analogB = [], [], [], []
+        pass
 
     def trigCollect(self):
-        print("trigCollect")
         process = self.DSPRunner.start()
         process.wait()
+        retVal = (100, [self.ReadPosition(0), self.ReadPosition(1), 0, 0])
+        self.clientConnection.receiveData("DSP done", retVal)
         # needs to block on the dsp finishing.
 
     def ReadPosition(self, axis):
@@ -239,6 +239,7 @@ class rpServer(object):
         self.DSPRunner.start()
 
     def receiveClient(self, uri):
+        self.clientConnection = Pyro4.Proxy(uri)
         print(uri)
 
 if __name__ == '__main__':
