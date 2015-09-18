@@ -91,6 +91,7 @@ class Runner(object):
         with open(self.filename, 'w') as f:
             for row in actiontable:
                 time, digitals, a1, a2 = row
+                time *= 1000 # convert to ns
                 dP, dN = digitals & int('11111111', 2), (digitals & int('1111111100000000', 2)) >> 8
                 finalrow = time, dP, dN, a1, a2
                 print('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
@@ -230,7 +231,7 @@ class rpServer(object):
 
         self.actiontable = zip(times, digitals, analogA, analogB)
         print("sort")
-        self.actiontable.sort(key=lambda row: row[0])
+        self.actiontable.sort()
 
 
     def DownloadProfile(self): # This is saving the action table
