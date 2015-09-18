@@ -49,7 +49,12 @@ def printfunc(func):
     @wraps(func)
     def wrapped(*args, **kwrds):
         print(func)
-        return func(*args, **kwrds)
+        try:
+            return func(*args, **kwrds)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+            raise e
     return wrapped
 
 class PrintMetaClass(type):
@@ -154,37 +159,33 @@ class rpServer(object):
             print("aline {}>1".format(aline))
 
     def arcl(self, cameras, lightTimePairs):
-        try:
-            if lightTimePairs:
-                # Expose all lights at the start, then drop them out
-                # as their exposure times come to an end.
-                # Sort so that the longest exposure time comes last.
-                lightTimePairs.sort(key = lambda a: a[1])
-                curLight = sum([p[0] for p in lightTimePairs])
+        if lightTimePairs:
+            # Expose all lights at the start, then drop them out
+            # as their exposure times come to an end.
+            # Sort so that the longest exposure time comes last.
+            lightTimePairs.sort(key = lambda a: a[1])
+            curDigital = cameras + sum([p[0] for p in lightTimePairs])
+            self.WriteDigital(curDigital)
+            print("Start with", curDigital)
+            totalTime = lightTimePairs[-1][1]
+            curTime = 0
+            for line, runTime in lightTimePairs:
+                # Wait until we need to open this shutter.
+                waitTime = runTime - curTime
+                if waitTime > 0:
+                    busy_wait(waitTime/1000.)
+                curDigital -= line
                 self.WriteDigital(curDigital)
-                print("Start with", curDigital)
-                totalTime = lightTimePairs[-1][1]
-                curTime = 0
-                for line, runTime in lightTimePairs:
-                    # Wait until we need to open this shutter.
-                    waitTime = runTime - curTime
-                    if waitTime > 0:
-                        pyC67.mmSleep(waitTime)
-                    curDigital -= line
-                    self.WriteDigital(curDigital)
-                    curTime += waitTime
-                    print("At",curTime,"set",curDigital)
-                # Wait for the final timepoint to close shutters.
-                if totalTime - curTime:
-                    busy_wait( (totalTime - curTime)/1000. )
-                print("Finally at",totalTime,"set",0)
-                self.WriteDigital(0)
-            else:
-                self.d.Expose(cameras)
-        except Exception, e:
-            print("Error in arcl:",e)
-            traceback.print_exc()
-            raise RuntimeError("Error in arcl: %s", e)
+                curTime += waitTime
+                print("At",curTime,"set",curDigital)
+            # Wait for the final timepoint to close shutters.
+            if totalTime - curTime:
+                busy_wait( (totalTime - curTime)/1000. )
+            print("Finally at",totalTime,"set",0)
+            self.WriteDigital(0)
+        else:
+            self.WriteDigital(cameras) # "expose"
+            self.WriteDigital(0)
 
     def profileSet(self, profileStr, digitals, *analogs):
         print("profileset called with")
