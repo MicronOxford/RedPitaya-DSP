@@ -6,9 +6,9 @@ f = open('acttable', 'w')
 n = 100000
 t = 0
 for l in range(n):
-    print('{} {} {} {}'.format( t, 0, 0, l*4000./n ), file=f)
+    print('{} {} {} {} {}'.format( t, 0, 0, 0, l*4000./n ), file=f)
     t += dt
-    print('{} {} {} {}'.format( t, 0x000000FF, 4000, l*4000./n ), file=f)
+    print('{} {} {} {} {}'.format( t, 0x000000FF, 0x000000FF, 4000, l*4000./n ), file=f)
     t += dt
 
 #print('{} {} 13 0'.format( repr(int(t/1e9)), repr(int(t%1e9)) ), file=f, end='')
