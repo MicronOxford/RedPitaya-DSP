@@ -35,6 +35,13 @@ def bin(s):
     ''' Returns the set bits in a positive int as a str.'''
     return str(s) if s<=1 else bin(s>>1) + str(s&1)
 
+def busy_wait(dt):
+    '''Wait without sleeping for higher accuracy.'''
+    current_time = time.time()
+    while (time.time() < current_time+dt):
+        pass
+
+
 from types import FunctionType
 from functools import wraps
 
@@ -146,17 +153,38 @@ class rpServer(object):
         else:
             print("aline {}>1".format(aline))
 
-    def arcl(self, cameraMask, lightTimePairs):
-        if len(lightTimePairs) == 0:
-            print("no lights were enabled")
-            return
-
-        lighttime = lightTimePairs[-1]
-        self.board.hk.expansion_connector_output_P = lighttime[0]
-        time.sleep(lighttime[1]/1000.)
-        self.board.hk.expansion_connector_output_N = cameraMask >> 8
-        self.board.hk.expansion_connector_output_N = 0
-        self.board.hk.expansion_connector_output_P = 0
+    def arcl(self, cameras, lightTimePairs):
+        try:
+            if lightTimePairs:
+                # Expose all lights at the start, then drop them out
+                # as their exposure times come to an end.
+                # Sort so that the longest exposure time comes last.
+                lightTimePairs.sort(key = lambda a: a[1])
+                curLight = sum([p[0] for p in lightTimePairs])
+                self.WriteDigital(curDigital)
+                print("Start with", curDigital)
+                totalTime = lightTimePairs[-1][1]
+                curTime = 0
+                for line, runTime in lightTimePairs:
+                    # Wait until we need to open this shutter.
+                    waitTime = runTime - curTime
+                    if waitTime > 0:
+                        pyC67.mmSleep(waitTime)
+                    curDigital -= line
+                    self.WriteDigital(curDigital)
+                    curTime += waitTime
+                    print("At",curTime,"set",curDigital)
+                # Wait for the final timepoint to close shutters.
+                if totalTime - curTime:
+                    busy_wait( (totalTime - curTime)/1000. )
+                print("Finally at",totalTime,"set",0)
+                self.WriteDigital(0)
+            else:
+                self.d.Expose(cameras)
+        except Exception, e:
+            print("Error in arcl:",e)
+            traceback.print_exc()
+            raise RuntimeError("Error in arcl: %s", e)
 
     def profileSet(self, profileStr, digitals, *analogs):
         print("profileset called with")
