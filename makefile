@@ -42,7 +42,7 @@ server: src/server.py
 	chmod +x build/bin/server
 
 rpos: tmp build
-	wget $(OS) --no-clobber -O tmp/ecosystem-0.92-0-devbuild.zip
+	-wget $(OS) --no-clobber -O tmp/ecosystem-0.92-0-devbuild.zip
 	unzip tmp/ecosystem-0.92-0-devbuild.zip -d build/
 
 pythonpackages: rpos
