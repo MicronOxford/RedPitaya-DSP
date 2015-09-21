@@ -1,9 +1,12 @@
 from __future__ import print_function
 
-dt = 1e4#ns
+sec = 1e9
+msec = 1e6
+usec = 1e3
+dt = 1e6#ns
 f = open('acttable', 'w')
 
-n = 100000
+n = 100
 t = 0
 for l in range(n):
     print('{} {} {} {} {}'.format( t, 0, 0, 0, l*4000./n ), file=f)
@@ -39,6 +42,22 @@ f.close()
 
 !scp acttable root@192.168.1.106:/tmp/
 !rm -f acttable
+
+
+# cam getint
+dt = 1000
+wait = 1e8-dt
+n = 50
+f = open('demotable', 'w')
+t=0
+for l in range(n):
+    print('{} {} {} {} {}'.format( t, 0, 2, 0, 0 ), file=f)
+    t += dt
+    print('{} {} {} {} {}'.format( t, 0, 0, 0, 0 ), file=f)
+    t += wait
+
+!scp demotable root@192.168.1.100:/tmp/
+!rm -f demotable
 
 '''
     #print('{} 13 0'.format(repr(int(t))), file=f)
