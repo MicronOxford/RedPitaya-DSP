@@ -91,7 +91,7 @@ class Runner(object):
         with open(self.filename, 'w') as f:
             for row in actiontable:
                 time, digitals, a1, a2 = row
-                time *= 1000 # convert to ns
+                time = int(time*1e6) # convert to ns
                 dP, dN = digitals & int('11111111', 2), (digitals & int('1111111100000000', 2)) >> 8
                 finalrow = time, dP, dN, a1, a2
                 print('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
@@ -141,6 +141,8 @@ class rpServer(object):
 
         self.clientConnection = None
 
+        self.fakeALines = [0, 0, 0, 0]
+
     # The dsp has a handler for SIGINT that cleans up
     def Abort(self):
         # kill the server process
@@ -158,6 +160,7 @@ class rpServer(object):
             self.board.asgb.data = [aduPos]
         else:
             print("aline {}>1".format(aline))
+            self.fakeALines[aline] = aduPos
 
     def arcl(self, cameras, lightTimePairs):
         if lightTimePairs:
@@ -256,7 +259,7 @@ class rpServer(object):
         elif axis == 1:
             return int(self.board.asgb.data[0])
         else:
-            return 0 # FIXME
+            return self.fakeALines[axis]
 
     def WriteDigital(self, level):
         dP, dN = level & int('11111111', 2), (level & int('1111111100000000', 2)) >> 8

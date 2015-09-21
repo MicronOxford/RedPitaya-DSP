@@ -177,7 +177,7 @@ int readActionTableLine(char *line, long lineno){
 		printf("a2_s is NULL for %s", line);
 		return -1;
 	}
-	table[lineno].clocks = strtoull(nstime_s, NULL, 10) * 1000000000L / COUNTS_PER_SECOND;
+	table[lineno].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / 1000000000L;
 	table[lineno].pinP = strtol(pinP_s, NULL, 10);
 	table[lineno].pinN = strtol(pinN_s, NULL, 10);
 	table[lineno].a1 = strtol(a1_s, NULL, 10);
