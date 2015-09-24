@@ -100,7 +100,7 @@ class Runner(object):
 
     def abort(self):
         if self.pid:
-            subprocess.call(['kill', '-9', str(self.pid)])
+            subprocess.call(['kill', '-2', str(self.pid)])
             self.pid = None
 
     def start(self):
