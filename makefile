@@ -9,7 +9,10 @@ CC=$(PREFIX)gcc
 PYTHONLIBS=build/usr/lib/Python2.7
 PYTHONPACKAGES=PyRedPitaya Pyro4==4.28 serpent
 
-all: dsp server rpos pythonpackages
+# the files on the SD card are present in opt on the running system
+LAUNCHCOMMAND="python /opt/bin/server > /server.log 2>&1 &"
+
+all: dsp server rpos pythonpackages autostart
 
 objs:
 	mkdir objs
@@ -43,12 +46,17 @@ server: src/server.py
 
 rpos: tmp build
 	-wget $(OS) --no-clobber -O tmp/ecosystem-0.92-0-devbuild.zip
-	unzip tmp/ecosystem-0.92-0-devbuild.zip -d build/
+	unzip -q tmp/ecosystem-0.92-0-devbuild.zip -d build/
 
 pythonpackages: rpos
 	# we need pyro and he red pitaya libs, --no-deps as they are both satisfied
 	# allreday on the RP but pip could not know this
 	pip install -t $(PYTHONLIBS) --no-dependencies $(PYTHONPACKAGES)
+
+autostart: rpos server build
+	echo "\n\n" >> build/etc/init.d/rcS
+	echo "echo 'launching DSP server'" >> build/etc/init.d/rcS
+	echo $(LAUNCHCOMMAND) >> build/etc/init.d/rcS
 
 atest: Atest.c
 	$(CC) $(CFLAGS) -O0 Atest.c fpga_awg.c -lm -o atest $(LNK)
