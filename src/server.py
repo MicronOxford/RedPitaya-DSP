@@ -45,7 +45,11 @@ def busy_wait(dt):
 from types import FunctionType
 from functools import wraps
 
+
 def printfunc(func):
+    '''Shows the traceback for a pyro function call in the server log.
+    also logs function calls.
+    '''
     @wraps(func)
     def wrapped(*args, **kwrds):
         print(func)
@@ -69,6 +73,8 @@ class PrintMetaClass(type):
 
 
 class Runner(object):
+
+    __metaclass__ = PrintMetaClass
 
     def __init__(self):
         self.pid = None
