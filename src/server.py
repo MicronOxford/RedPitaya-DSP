@@ -84,7 +84,7 @@ class Runner(object):
 
     def loadDemo(self, dt):
         with open(self.filename, 'w') as f:
-            n = 100000
+            n = int(1*1e9/dt) # want a second of output
             t = 0
             for l in range(n):
                 print('{} {} {} {} {}'.format( t, 0, 0, 0, l*4000./n ), file=f)
