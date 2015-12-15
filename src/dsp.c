@@ -12,7 +12,7 @@
 #define MAXLINELEN 50
 #define MAXHANDLERLEN 5
 #define DELIM " "
-#define BILLION  1000000000L;
+#define BILLION  1000000000L
 
 char ERRVAL[] = "/n";
 
@@ -177,12 +177,12 @@ int readActionTableLine(char *line, long lineno){
 		printf("a2_s is NULL for %s", line);
 		return -1;
 	}
-	table[lineno].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / 1000000000L;
+	table[lineno].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / BILLION;
 	table[lineno].pinP = strtol(pinP_s, NULL, 10);
 	table[lineno].pinN = strtol(pinN_s, NULL, 10);
 	table[lineno].a1 = strtol(a1_s, NULL, 10);
 	table[lineno].a2 = strtol(a2_s, NULL, 10);
-	printf("row: %lu time:%llu pinP:%i pinN:%i a1:%i\n", lineno, table[lineno].clocks, table[lineno].pinP, table[lineno].pinN, table[lineno].a1);
+	// printf("row: %lu time:%llu pinP:%i pinN:%i a1:%i\n", lineno, table[lineno].clocks, table[lineno].pinP, table[lineno].pinN, table[lineno].a1);
 	return 0;
 }
 
