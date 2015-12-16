@@ -120,12 +120,23 @@ int main(int argc, char *argv[])
 		printf("alloc action table\n");
 		long at_size = sizeof(actionTable_t)*lines;
 		table = malloc(at_size);
-		char *tablebuf = (char *)(&table);
+		char *tablebuf = (char *)table;
+		printf("reading %lu bytes form stdin\n", at_size);
 
-		for (long i = 0; i < at_size; i++){ // get the total number of bytes, write to
-																		// table interpreted as a bytes array. C.
-			tablebuf[i] = fgetc(stdin);
+		long count = 0;
+		while (count < at_size){
+			errno = 0;
+			count += read(0, (char *)(tablebuf+count), at_size-count);
+			if (errno != 0) perror("error reading from\n");
 		}
+		// for (long i = 0; i < at_size; i++){ // get the total number of bytes, write to
+		// 																// table interpreted as a bytes array. C.
+		// 	errno = 0;
+		// 	tablebuf[i] = fgetc(stdin);
+		// 	if (errno != 0){
+		// 		perror("error writing to\n");
+		// 	}
+		// }
 		printf("read action table from stdin.\n");
 	}
 	// before we set ourselves to more important than the terminal,
@@ -202,12 +213,12 @@ int readActionTableLine(char *line, long lineno){
 	}
 	a1_s = strtok(NULL, DELIM);
 	if (a1_s == NULL){
-		printf("a1_s is NULL for %s", line);
+		printf("a1_s is NULL for %s\n", line);
 		return -1;
 	}
 	a2_s = strtok(NULL, DELIM);
 	if (a2_s == NULL){
-		printf("a2_s is NULL for %s", line);
+		printf("a2_s is NULL for %s\n", line);
 		return -1;
 	}
 	table[lineno].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / BILLION;
