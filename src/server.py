@@ -6,6 +6,7 @@ import subprocess
 import threading
 import os
 import time
+import struct
 
 import logging
 import traceback
@@ -72,15 +73,23 @@ class PrintMetaClass(type):
         return type.__new__(meta, classname, bases, newClassDict)
 
 
-class Runner(object):
 
-    __metaclass__ = PrintMetaClass
+class Runner(object):
+    '''Class responsible for communicating with the DSP process.
+    '''
+
+    __metaclass__ = PrintMetaClass # logs all the function calls to this class
 
     def __init__(self):
-        self.pid = None
-        self.filename = '/tmp/actiontable'
+        self.pid = None # currently running process
+        self.filename = '/tmp/actiontable' # file to write the DSP table to
         self.writtenActionTable = False
         self.running = None
+
+    # actiontable format is time, dP, dN, a1, a2
+    # where the time is the delta-t since the start in ns
+    # dP, dN are bitmasks to write to the pins
+    # a1 and a2 are values to write to the analog pins
 
     def loadDemo(self, dt):
         with open(self.filename, 'w') as f:
@@ -122,6 +131,49 @@ class Runner(object):
     def stop(self):
         self.abort()
 
+class MemCpyRunner(Runner):
+
+    def __init__(self):
+        self.pid = None
+        self.running = None
+        self.actionTableRows = []
+        self.structFmt = 'QiiII'
+
+    # typedef struct actionTable {
+    # 	unsigned long long clocks;
+    # 	int pinP;
+    # 	int pinN;
+    # 	uint32_t a1;
+    # 	uint32_t a2;
+    # } actionTable_t;
+
+    # the action table stores clock cycles,
+    # we want nanoseconds -> conversion is done in dsp code
+
+    def loadDemo(self, dt):
+        self.actionTableRows = [] # clear the buffer when doing a new expr.
+        n = int(1*1e9/dt) # want a second of output
+        t = 0
+        for l in range(n):
+            self.actionTableRows.append(struct.pack(self.structFmt, t, 0, 0, 0, l*4000./n))
+            t += dt
+            self.actionTableRows.append(struct.pack(self.structFmt, t, 0x000000FF, 0x000000FF, 4000, l*4000./n))
+            t += dt
+
+    def start(self):
+        if self.actionTableRows:
+            actionTableBytes = ''.join(self.actionTableRows)
+            cmd = ['/opt/bin/dsp', '-', str(len(self.actionTableRows))]
+            print('calling', cmd)
+            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+            print('transferring {} bytes'.format(len(actionTableBytes)))
+            self.pid = proc.pid
+            proc.stdin.write(actionTableBytes)
+
+            return proc
+        else:
+            raise Exception("please write the action table!")
+
 
 class rpServer(object):
 
@@ -135,8 +187,8 @@ class rpServer(object):
         self.analogA = []
         self.analogB = []
 
-        self.DSPRunner = Runner()
-        self.board = RedPitaya()
+        self.DSPRunner = MemCpyRunner()
+        self.board = RedPitaya()#
 
         # single value output
         self.board.asga.counter_wrap = self.board.asga.counter_step
