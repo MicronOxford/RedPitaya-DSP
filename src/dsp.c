@@ -138,6 +138,11 @@ int main(int argc, char *argv[])
 		// 	}
 		// }
 		printf("read action table from stdin.\n");
+
+		for (long i = 0; i < lines; i++) {
+			// same time shift logic as when reading from the disk file
+			table[i].clocks = (table[i].clocks * COUNTS_PER_SECOND) / BILLION;
+		}
 	}
 	// before we set ourselves to more important than the terminal,
 	// flush.
