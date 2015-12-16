@@ -12,7 +12,7 @@
 #include "rpouts.h"
 #include "RPmemmap.h"
 
-#define PAGE_SIZE ((size_t)getpagesize())
+#define PAGE_SIZE ((size_t)sysconf(_SC_PAGESIZE)) // getpagesize is gone in c99
 #define PAGE_MASK ((uint64_t)(long)~(PAGE_SIZE - 1))
 
 int OUTS_FD;
@@ -33,6 +33,8 @@ int initOuts(){
       return 1;
   }
 
+
+
   *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_DIR) = 0xFFFFFFFF;
   *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_DIR) = 0xFFFFFFFF;
   out_setpins_P(0);
@@ -40,11 +42,11 @@ int initOuts(){
   return 0;
 }
 
-inline void out_setpins_P(int pins){
+void out_setpins_P(int pins){
   *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT) = pins;
 }
 
-inline void out_setpins_N(int pins){
+void out_setpins_N(int pins){
   *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT) = pins;
 }
 

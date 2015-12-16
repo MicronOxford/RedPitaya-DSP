@@ -11,7 +11,7 @@
 
 #include "timer.h"
 
-#define PAGE_SIZE ((size_t)getpagesize())
+#define PAGE_SIZE ((size_t)sysconf(_SC_PAGESIZE)) // getpagesize is gone in c99
 #define PAGE_MASK ((uint64_t)(long)~(PAGE_SIZE - 1))
 
 

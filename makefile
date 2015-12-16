@@ -1,4 +1,4 @@
-CFLAGS=-Wall -g -O2 -I./include
+CFLAGS=-Wall -std=c99 -D_XOPEN_SOURCE=700 -g -O0 -I./include
 IP=192.168.1.100
 # Could also build this from source, https://github.com/clade/RedPitaya
 OS=http://clade.pierre.free.fr/python-on-red-pitaya/ecosystem-0.92-0-devbuild.zip

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sched.h>
+#include <errno.h>
 #include "timer.h"
 #include "rpouts.h"
 #include "fpga_awg.h"
@@ -26,6 +27,7 @@ typedef struct actionTable {
 	uint32_t a2;
 } actionTable_t;
 
+typedef enum {DISK, PIPE} atsource;
 
 int readActionTable(FILE *fp, long lines);
 int readActionTableLine(char *line, long lineno);
@@ -39,7 +41,7 @@ void spinwait(int loops) {
 		t += 1;
 }
 
-actionTable_t *table = NULL;
+actionTable_t *table = NULL; //global so it can be free'd in exit.
 
 int main(int argc, char *argv[])
 {
@@ -66,35 +68,66 @@ int main(int argc, char *argv[])
 
 	printf("hello, world!\n");
 
-	if (argc != 2) {
-		printf("USAGE: dsp ACTIONTABLEFILE\n");
+	atsource actionTableSource;
+	if (argc == 2){
+		actionTableSource = DISK;
+	} else if (argc == 3 && strncmp(argv[1], "-", 1) == 0){ // we check that length is a num later
+		actionTableSource = PIPE;
+	} else {
+		printf("USAGE: dsp ACTIONTABLEFILE or dsp - LENGTH\n");
 		_exit(1);
 	}
 
-	FILE *fp;
-	fp = fopen(argv[1], "r");
-	if (fp == NULL) {
-		printf("Could not open file %s\n", argv[1]);
-		_exit(2);
-	}
-
 	long lines = 0;
-	int ch;
-	while (EOF != (ch=getc(fp)))
-	    if (ch=='\n')
-	        ++lines;
-	printf("actiontable is %lu lines long\n", lines);
-	rewind(fp);
 
-	printf("alloc action table\n");
-	table = malloc(sizeof(actionTable_t)*lines);
+	if (actionTableSource == DISK){
 
-	if (readActionTable(fp, lines) != 0){
-		printf("Failed to read action table file.\n");
-		_exit(3);
+		FILE *fp;
+		fp = fopen(argv[1], "r");
+		if (fp == NULL) {
+			printf("Could not open file %s\n", argv[1]);
+			_exit(2);
+		}
+
+		lines = 0;
+		int ch;
+		while (EOF != (ch=getc(fp)))
+		    if (ch=='\n')
+		        ++lines;
+		printf("actiontable is %lu lines long\n", lines);
+		rewind(fp);
+
+		printf("alloc action table\n");
+		table = malloc(sizeof(actionTable_t)*lines);
+
+		if (readActionTable(fp, lines) != 0){
+			printf("Failed to read action table file.\n");
+			_exit(3);
+		}
+		printf("read action table file.\n");
+
+	} else {
+
+		char *endptr; // we do not use this, but we need a bit of stack to store
+									// the location of the remainder of the length arg
+		errno = 0;    // so we can check that strtol succeeds
+		lines = strtol(argv[2], &endptr, 0); //2nd arg is no lines
+		if (errno != 0){
+			printf("USAGE: dsp ACTIONTABLEFILE or dsp - LENGTH\n");
+			_exit(1);
+		}
+
+		printf("alloc action table\n");
+		long at_size = sizeof(actionTable_t)*lines;
+		table = malloc(at_size);
+		char *tablebuf = (char *)(&table);
+
+		for (long i = 0; i < at_size; i++){ // get the total number of bytes, write to
+																		// table interpreted as a bytes array. C.
+			tablebuf[i] = fgetc(stdin);
+		}
+		printf("read action table from stdin.\n");
 	}
-	printf("read action table file.\n");
-
 	// before we set ourselves to more important than the terminal,
 	// flush.
 	fflush(stdout);
