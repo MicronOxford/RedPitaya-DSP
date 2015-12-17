@@ -72,6 +72,16 @@ class PrintMetaClass(type):
             newClassDict[attributeName] = attribute
         return type.__new__(meta, classname, bases, newClassDict)
 
+# typedef struct actionTable {
+# 	unsigned long long clocks;
+# 	int pinP;
+# 	int pinN;
+# 	uint32_t a1;
+# 	uint32_t a2;
+# } actionTable_t;
+
+# the action table stores clock cycles,
+# we want nanoseconds -> conversion is done in dsp code
 
 
 class Runner(object):
@@ -82,73 +92,14 @@ class Runner(object):
 
     def __init__(self):
         self.pid = None # currently running process
-        self.filename = '/tmp/actiontable' # file to write the DSP table to
-        self.writtenActionTable = False
         self.running = None
+        self.actionTableRows = []
+        self.structFmt = 'QiiII'
 
     # actiontable format is time, dP, dN, a1, a2
     # where the time is the delta-t since the start in ns
     # dP, dN are bitmasks to write to the pins
     # a1 and a2 are values to write to the analog pins
-
-    def loadDemo(self, dt):
-        with open(self.filename, 'w') as f:
-            n = int(1*1e9/dt) # want a second of output
-            t = 0
-            for l in range(n):
-                print('{} {} {} {} {}'.format( t, 0, 0, 0, l*4000./n ), file=f)
-                t += dt
-                print('{} {} {} {} {}'.format( t, 0x000000FF, 0x000000FF, 4000, l*4000./n ), file=f)
-                t += dt
-        self.writtenActionTable = True
-
-    def load(self, actiontable):
-        with open(self.filename, 'w') as f:
-            for row in actiontable:
-                time, digitals, a1, a2 = row
-                time = int(time*1e3) # convert to ns
-                dP, dN = digitals & int('11111111', 2), (digitals & int('1111111100000000', 2)) >> 8
-                finalrow = time, dP, dN, a1, a2
-                print('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
-                print('{} {} {} {} {}'.format(*finalrow), file=f)
-        self.writtenActionTable = True
-
-    def abort(self):
-        if self.pid:
-            subprocess.call(['kill', '-2', str(self.pid)])
-            self.pid = None
-
-    def start(self):
-        if self.writtenActionTable:
-            cmd = ['dsp', self.filename]
-            print('calling', cmd)
-            proc = subprocess.Popen(cmd)
-            self.pid = proc.pid
-            return proc
-        else:
-            raise Exception("please write the action table!")
-
-    def stop(self):
-        self.abort()
-
-class MemCpyRunner(Runner):
-
-    def __init__(self):
-        self.pid = None
-        self.running = None
-        self.actionTableRows = []
-        self.structFmt = 'QiiII'
-
-    # typedef struct actionTable {
-    # 	unsigned long long clocks;
-    # 	int pinP;
-    # 	int pinN;
-    # 	uint32_t a1;
-    # 	uint32_t a2;
-    # } actionTable_t;
-
-    # the action table stores clock cycles,
-    # we want nanoseconds -> conversion is done in dsp code
 
     def loadDemo(self, dt):
         self.actionTableRows = [] # clear the buffer when doing a new expr.
@@ -159,6 +110,27 @@ class MemCpyRunner(Runner):
             t += dt
             self.actionTableRows.append(struct.pack(self.structFmt, t, 0x000000FF, 0x000000FF, 4000, l*4000./n))
             t += dt
+
+    def load(self, actiontable):
+        self.actionTableRows = [] # clear the buffer when doing a new expr.
+
+        for row in actiontable:
+            time, digitals, a1, a2 = row
+            time = int(time*1e3) # convert to ns
+            dP, dN = digitals & int('11111111', 2), (digitals & int('1111111100000000', 2)) >> 8
+            finalrow = time, dP, dN, a1, a2
+            print('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
+            self.actionTableRows.append(struct.pack(self.structFmt, *finalrow))
+
+
+    def abort(self):
+        if self.pid:
+            subprocess.call(['kill', '-2', str(self.pid)])
+            self.pid = None
+
+    def stop(self):
+        self.abort()
+
 
     def start(self):
         if self.actionTableRows:
@@ -175,6 +147,7 @@ class MemCpyRunner(Runner):
             raise Exception("please write the action table!")
 
 
+
 class rpServer(object):
 
     __metaclass__ = PrintMetaClass
@@ -187,7 +160,7 @@ class rpServer(object):
         self.analogA = []
         self.analogB = []
 
-        self.DSPRunner = MemCpyRunner()
+        self.DSPRunner = Runner()
         self.board = RedPitaya()#
 
         # single value output
