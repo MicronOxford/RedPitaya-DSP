@@ -149,7 +149,11 @@ class Runner(object):
 
 
 class rpServer(object):
+    '''Singleton class to be served by Pyro. Provides the APi for cockpit to
+    talk to us.
+    '''
 
+    # Prints all func. calls to stdout
     __metaclass__ = PrintMetaClass
 
     def __init__(self):
@@ -176,15 +180,19 @@ class rpServer(object):
 
     # The dsp has a handler for SIGINT that cleans up
     def Abort(self):
+        '''Kills running server processes.'''
         # kill the server process
         self.DSPRunner.abort()
         self.board.hk.expansion_connector_output_P = 0
         self.board.hk.expansion_connector_output_N = 0
 
     def MoveAbsoluteADU(self, aline, aduPos):
-        # probably just use the python lib
-        # volts to ADU's for the DSP card: int(pos * 6553.6))
-        # Bu we won't be hooked up to the stage?
+        '''Writes a value to the analog outs.
+
+        aline: 0-based line index. Currently only have lines 1&2
+        aduPos: value to write to the line.
+            volts to ADU's for the DSP card: int(pos * 6553.6))
+        '''
         if aline == 0:
             self.board.asga.data = [aduPos]
         if aline == 1:
@@ -194,6 +202,8 @@ class rpServer(object):
             self.fakeALines[aline] = aduPos
 
     def arcl(self, cameras, lightTimePairs):
+        '''Exposes the given cameras for the given lengths of time.
+        '''
         if lightTimePairs:
             # Expose all lights at the start, then drop them out
             # as their exposure times come to an end.
@@ -225,6 +235,8 @@ class rpServer(object):
     def profileSet(self, profileStr, digitals, *analogs):
         print("profileset called with")
         print("analog0", analogs[0], "times", zip(*analogs[0])[0], "vals", zip(*analogs[0])[1])
+        print('digitals as well')
+        print(digitals)
         # This is downloading the action table
         # digitals is numpy.zeros((len(times), 2), dtype = numpy.uint32),
         # starting at 0 -> [times for digital signal changes, digital lines]
@@ -263,10 +275,10 @@ class rpServer(object):
                     prevValue = outline[-1] if outline else 0
                     outline.append(prevValue) # the last value
 
-        self.actiontable = zip(times, digitals, analogA, analogB)
+        # times are in provided in units of 50nanos each to setprofile
+        self.actiontable = zip([t*50 for t in times], digitals, analogA, analogB)
         print("sort")
         self.actiontable.sort()
-
 
     def DownloadProfile(self): # This is saving the action table
         self.DSPRunner.load(self.actiontable)
