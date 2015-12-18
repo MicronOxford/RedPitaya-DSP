@@ -91,7 +91,7 @@ class Runner(object):
     __metaclass__ = PrintMetaClass # logs all the function calls to this class
 
     def __init__(self):
-        self.pid = None # currently running process
+        self.process = None # currently running process
         self.running = None
         self.actionTableRows = []
         self.structFmt = 'QiiII'
@@ -124,9 +124,8 @@ class Runner(object):
 
 
     def abort(self):
-        if self.pid:
-            subprocess.call(['kill', '-2', str(self.pid)])
-            self.pid = None
+        if self.process.poll():
+            subprocess.send_signal(subprocess.signal.SIGINT)
 
     def stop(self):
         self.abort()
@@ -137,12 +136,10 @@ class Runner(object):
             actionTableBytes = ''.join(self.actionTableRows)
             cmd = ['/opt/bin/dsp', '-', str(len(self.actionTableRows))]
             print('calling', cmd)
-            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+            self.process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
             print('transferring {} bytes'.format(len(actionTableBytes)))
-            self.pid = proc.pid
-            proc.stdin.write(actionTableBytes)
+            self.process.stdin.write(actionTableBytes)
 
-            return proc
         else:
             raise Exception("please write the action table!")
 
@@ -291,8 +288,7 @@ class rpServer(object):
         pass
 
     def trigCollect(self):
-        process = self.DSPRunner.start()
-        # process.wait()
+        self.DSPRunner.start()
         retVal = (100, [self.ReadPosition(0), self.ReadPosition(1), 0, 0])
         self.clientConnection.receiveData("DSP done", retVal)
         # needs to block on the dsp finishing.
