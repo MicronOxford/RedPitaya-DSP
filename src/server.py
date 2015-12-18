@@ -275,8 +275,9 @@ class rpServer(object):
                     prevValue = outline[-1] if outline else 0
                     outline.append(prevValue) # the last value
 
-        # times are in provided in units of 50nanos each to setprofile
-        self.actiontable = zip([t*50 for t in times], digitals, analogA, analogB)
+        # times are in provided in units of 50nanos each to setprofile?
+        # determined by taking 100ms exposures and adjusting until correct
+        self.actiontable = zip([t*100 for t in times], digitals, analogA, analogB)
         print("sort")
         self.actiontable.sort()
 
@@ -291,7 +292,7 @@ class rpServer(object):
 
     def trigCollect(self):
         process = self.DSPRunner.start()
-        process.wait()
+        # process.wait()
         retVal = (100, [self.ReadPosition(0), self.ReadPosition(1), 0, 0])
         self.clientConnection.receiveData("DSP done", retVal)
         # needs to block on the dsp finishing.
