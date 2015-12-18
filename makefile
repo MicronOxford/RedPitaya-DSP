@@ -10,7 +10,7 @@ PYTHONLIBS=build/usr/lib/Python2.7
 PYTHONPACKAGES=PyRedPitaya Pyro4==4.28 serpent
 
 # the files on the SD card are present in opt on the running system
-LAUNCHCOMMAND="python /opt/bin/server > /server.log 2>&1 &"
+LAUNCHCOMMAND="python /opt/bin/server &"
 
 all: dsp server rpos pythonpackages autostart
 
