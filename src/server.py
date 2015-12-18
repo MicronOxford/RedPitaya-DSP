@@ -1,7 +1,6 @@
 #! /usr/bin/python
 from __future__ import print_function
 
-import Pyro4
 import subprocess
 import threading
 import os
@@ -11,21 +10,11 @@ import struct
 import logging
 import traceback
 import sys
-logging.basicConfig()  # or your own sophisticated setup
-logging.getLogger("Pyro4").setLevel(logging.DEBUG)
-logging.getLogger("Pyro4.core").setLevel(logging.DEBUG)
 # ... set level of other logger names as desired ...
 
-root = logging.getLogger()
-root.setLevel(logging.DEBUG)
-
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-root.addHandler(ch)
-
 from PyRedPitaya.board import RedPitaya
+import Pyro4
+
 
 BASE            = 0xFFFF9000
 COMM_RX_AT_ROWS = 0x10
@@ -53,11 +42,11 @@ def printfunc(func):
     '''
     @wraps(func)
     def wrapped(*args, **kwrds):
-        print(func)
+        logging.debug(func)
         try:
             return func(*args, **kwrds)
         except Exception as e:
-            print(e)
+            logging.debug(str(e))
             traceback.print_exc()
             raise e
     return wrapped
@@ -83,6 +72,27 @@ class PrintMetaClass(type):
 # the action table stores clock cycles,
 # we want nanoseconds -> conversion is done in dsp code
 
+class _dspPrinter(threading.Thread):
+
+    def __init__(self, buffer, logger):
+        super(_dspPrinter, self).__init__()
+        self.daemon=True
+        self.buf = buffer
+        self.running = True
+        self.logger = logging.getLogger('DSP')
+
+    def run(self):
+        '''Outputs the data from the buffer to the logging output.
+        '''
+        while self.running:
+            msg = []
+            # read a line.
+            while len(msg) == 0 or msg[-1] != '\n':
+                msg.append(os.read(self.buf, 1)) # should block on empty pipe?
+
+            self.logger.info(''.join(msg).strip())
+            time.sleep(0.1) # don't spinloop
+
 
 class Runner(object):
     '''Class responsible for communicating with the DSP process.
@@ -95,6 +105,11 @@ class Runner(object):
         self.running = None
         self.actionTableRows = []
         self.structFmt = 'QiiII'
+
+        # set up logging for the DSP process
+        self.outBufread, self.outBufWrite = os.pipe()
+        printer = _dspPrinter(self.outBufread, logging.getLogger())
+        printer.start()
 
     # actiontable format is time, dP, dN, a1, a2
     # where the time is the delta-t since the start in ns
@@ -119,34 +134,36 @@ class Runner(object):
             time = int(time*1e3) # convert to ns
             dP, dN = digitals & int('11111111', 2), (digitals & int('1111111100000000', 2)) >> 8
             finalrow = time, dP, dN, a1, a2
-            print('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
+            logging.debug('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
             self.actionTableRows.append(struct.pack(self.structFmt, *finalrow))
 
-
     def abort(self):
-        if self.process.poll():
+        """Stops the DSP ASAP.
+        """
+        # check for none and liveness
+        if self.process and self.process.poll():
             subprocess.send_signal(subprocess.signal.SIGINT)
 
     def stop(self):
         self.abort()
 
-
     def start(self):
         if self.actionTableRows:
             actionTableBytes = ''.join(self.actionTableRows)
             cmd = ['/opt/bin/dsp', '-', str(len(self.actionTableRows))]
-            print('calling', cmd)
-            self.process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-            print('transferring {} bytes'.format(len(actionTableBytes)))
+            logging.info('calling ' + str(cmd))
+            self.process = subprocess.Popen(cmd,
+                                            stdin=subprocess.PIPE,
+                                            stdout=self.outBufWrite)
+            logging.debug('transferring {} bytes'.format(len(actionTableBytes)))
             self.process.stdin.write(actionTableBytes)
-
         else:
             raise Exception("please write the action table!")
 
 
 
 class rpServer(object):
-    '''Singleton class to be served by Pyro. Provides the APi for cockpit to
+    '''Singleton class to be served by Pyro. Provides the API for cockpit to
     talk to us.
     '''
 
@@ -162,7 +179,7 @@ class rpServer(object):
         self.analogB = []
 
         self.DSPRunner = Runner()
-        self.board = RedPitaya()#
+        self.board = RedPitaya()
 
         # single value output
         self.board.asga.counter_wrap = self.board.asga.counter_step
@@ -195,7 +212,7 @@ class rpServer(object):
         if aline == 1:
             self.board.asgb.data = [aduPos]
         else:
-            print("aline {}>1".format(aline))
+            logging.debug("aline {}>1".format(aline))
             self.fakeALines[aline] = aduPos
 
     def arcl(self, cameras, lightTimePairs):
@@ -208,7 +225,7 @@ class rpServer(object):
             lightTimePairs.sort(key = lambda a: a[1])
             curDigital = cameras + sum([p[0] for p in lightTimePairs])
             self.WriteDigital(curDigital)
-            print("Start with", curDigital)
+            logging.debug("Start with " + curDigital)
             totalTime = lightTimePairs[-1][1]
             curTime = 0
             for line, runTime in lightTimePairs:
@@ -219,21 +236,22 @@ class rpServer(object):
                 curDigital -= line
                 self.WriteDigital(curDigital)
                 curTime += waitTime
-                print("At",curTime,"set",curDigital)
+                logging.debug("At " + str(curTime) + "set " + str(curDigital))
             # Wait for the final timepoint to close shutters.
             if totalTime - curTime:
                 busy_wait( (totalTime - curTime)/1000. )
-            print("Finally at",totalTime,"set",0)
             self.WriteDigital(0)
+            logging.debug("Finally at " + totalTime + "set " + 0)
         else:
             self.WriteDigital(cameras) # "expose"
             self.WriteDigital(0)
 
+
     def profileSet(self, profileStr, digitals, *analogs):
-        print("profileset called with")
-        print("analog0", analogs[0], "times", zip(*analogs[0])[0], "vals", zip(*analogs[0])[1])
-        print('digitals as well')
-        print(digitals)
+        logging.debug("profileset called with")
+        logging.debug("analog0 " + analogs[0] + "times " + str(zip(*analogs[0])[0]) + "vals " + str(zip(*analogs[0])[1]))
+        logging.debug('digitals as well')
+        logging.debug(digitals)
         # This is downloading the action table
         # digitals is numpy.zeros((len(times), 2), dtype = numpy.uint32),
         # starting at 0 -> [times for digital signal changes, digital lines]
@@ -254,10 +272,8 @@ class rpServer(object):
         Atimes = list(Atimes)
         Btimes = list(Btimes)
 
-        print("dt:{},\n at:{},\n bt:{}".format(Dtimes, Atimes, Btimes))
-        print()
-        print()
-        print("dv:{},\n av:{},\n bv:{}".format(Dvals, Avals, Bvals))
+        logging.debug("dt:{},\n at:{},\n bt:{}".format(Dtimes, Atimes, Btimes))
+        logging.debug("dv:{},\n av:{},\n bv:{}".format(Dvals, Avals, Bvals))
 
         times, digitals, analogA, analogB = [], [], [], []
         times = sorted(list(set(Dtimes+Atimes+Btimes)))
@@ -275,7 +291,7 @@ class rpServer(object):
         # times are in provided in units of 50nanos each to setprofile?
         # determined by taking 100ms exposures and adjusting until correct
         self.actiontable = zip([t*100 for t in times], digitals, analogA, analogB)
-        print("sort")
+        logging.debug("sorting action table")
         self.actiontable.sort()
 
     def DownloadProfile(self): # This is saving the action table
@@ -315,21 +331,58 @@ class rpServer(object):
         self.clientConnection = Pyro4.Proxy(uri)
         print(uri)
 
-if __name__ == '__main__':
-    dsp = rpServer()
 
-    print("providing dsp.d() as [pyroDSP] on port 7766")
-    print("Started program at",time.strftime("%A, %B %d, %I:%M %p"))
+if __name__ == '__main__':
+    logs = [logging.getLogger(), logging.getLogger("Pyro4")]
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.ERROR)
+    stdout_handler.setFormatter(formatter)
+
+    # using watched so that we could use a log rotator
+    # but that has to be seperate
+    file_handler = logging.FileHandler('/server.log')
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    for log in logs:
+        log.setLevel(logging.DEBUG)
+        log.addHandler(file_handler)
+        log.addHandler(stdout_handler)
+
+
+    # logging.debug('debug message')
+    # logging.info('info message')
+    # logging.warn('warn message')
+    # logging.error('error message')
+    # logging.critical('critical message')
+
+    # plogs = [logging.getLogger(lstr) for lstr in ("Pyro4","Pyro4.core")]
+    #
+    # for plog in plogs:
+    #     plog.setLevel(logging.DEBUG)
+    #     plog.addHandler(file_handler)
+    #     plog.addHandler(stdout_handler)
+
+    dsp = rpServer()
+    logging.debug(threading.enumerate())
+    logging.info("providing dsp.d() as [pyroDSP] on port 7000")
+    logging.info("Started program at " + time.strftime("%A, %B %d, %I:%M %p"))
 
     Pyro4.config.SERIALIZER = 'pickle'
     Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 
+    delay = 1 # reduce retry spam, by exp. backoff
     while True:
         try:
             daemon = Pyro4.Daemon(port = 7000, host = '192.168.1.100')
             break
         except Exception as e:
-            print("Socket fail", e)
-            time.sleep(1)
+            delay *= 2
+            logging.error('Could not open socket. Retrying in {}s.'.format(delay))
+            logging.debug(str(e))
+            time.sleep(delay)
     Pyro4.Daemon.serveSimple({dsp: 'pyroDSP'},
             daemon = daemon, ns = False, verbose = True)
