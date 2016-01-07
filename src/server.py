@@ -288,6 +288,12 @@ class rpServer(object):
                     prevValue = outline[-1] if outline else 0
                     outline.append(prevValue) # the last value
 
+        # the DSP 'baselines' the analog values the the first value in the analogs
+        # when an experiment is started. We don't do this, we just write the values
+        # so add the first analog value back on
+        analogA = [analogAi+analogA[0] for analogAi in analogA]
+        analogB = [analogBi+analogB[0] for analogBi in analogB]
+
         # times are in provided in units of 50nanos each to setprofile?
         # determined by taking 100ms exposures and adjusting until correct
         self.actiontable = zip([t*100 for t in times], digitals, analogA, analogB)
