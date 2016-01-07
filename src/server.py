@@ -225,7 +225,7 @@ class rpServer(object):
             lightTimePairs.sort(key = lambda a: a[1])
             curDigital = cameras + sum([p[0] for p in lightTimePairs])
             self.WriteDigital(curDigital)
-            logging.debug("Start with " + curDigital)
+            logging.debug("Start with " + str(curDigital))
             totalTime = lightTimePairs[-1][1]
             curTime = 0
             for line, runTime in lightTimePairs:
@@ -241,7 +241,7 @@ class rpServer(object):
             if totalTime - curTime:
                 busy_wait( (totalTime - curTime)/1000. )
             self.WriteDigital(0)
-            logging.debug("Finally at " + totalTime + "set " + 0)
+            logging.debug("Finally at " + str(totalTime) + "set " + str(0))
         else:
             self.WriteDigital(cameras) # "expose"
             self.WriteDigital(0)
@@ -249,7 +249,7 @@ class rpServer(object):
 
     def profileSet(self, profileStr, digitals, *analogs):
         logging.debug("profileset called with")
-        logging.debug("analog0 " + analogs[0] + "times " + str(zip(*analogs[0])[0]) + "vals " + str(zip(*analogs[0])[1]))
+        logging.debug("analog0 " + str(analogs[0]) + "times " + str(zip(*analogs[0])[0]) + "vals " + str(zip(*analogs[0])[1]))
         logging.debug('digitals as well')
         logging.debug(digitals)
         # This is downloading the action table
