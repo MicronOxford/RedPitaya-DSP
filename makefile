@@ -57,6 +57,9 @@ autostart: rpos server build
 	echo "\n\n" >> build/etc/init.d/rcS
 	echo "echo 'launching DSP server'" >> build/etc/init.d/rcS
 	echo $(LAUNCHCOMMAND) >> build/etc/init.d/rcS
+	# set to static network config for fast boot
+	sed -i 's/dhcp/static/g' build/etc/network/config
+	sed -i 's/IP=[0-9.]*/IP=$(IP)/g' build/etc/network/config
 
 atest: Atest.c
 	$(CC) $(CFLAGS) -O0 Atest.c fpga_awg.c -lm -o atest $(LNK)
