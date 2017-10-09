@@ -1,3 +1,4 @@
-include/*
 *~
-dsp
+tmp
+build/
+objs/
