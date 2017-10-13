@@ -3,7 +3,7 @@ IP=192.168.1.100
 # Could also build this from source, https://github.com/clade/RedPitaya
 OS=http://clade.pierre.free.fr/python-on-red-pitaya/ecosystem-0.92-0-devbuild.zip
 
-PREFIX=arm-linux-gnueabi-
+#PREFIX=arm-linux-gnueabi-
 CC=$(PREFIX)gcc
 
 PYTHONLIBS=build/usr/lib/Python2.7
@@ -23,6 +23,12 @@ build:
 objs/dsp.o: src/dsp.c objs
 	$(CC) $(CFLAGS) -c $< -o $@
 
+objs/dsp-test.o: src/dsp_test.c objs
+	$(CC) $(CFLAGS) -c $< -o $@
+
+objs/primeNums.o: src/primeNums.c objs
+	$(CC) $(CFLAGS) -c $< -o $@
+
 objs/fpga_awg.o: src/fpga_awg.c include/fpga_awg.h objs
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -32,7 +38,18 @@ objs/rpouts.o: src/rpouts.c include/rpouts.h objs
 objs/timer.o: src/timer.c include/timer.h include/xparameters.h objs
 	$(CC) $(CFLAGS) -c $< -o $@
 
+objs/gpioCont.o: src/gpioCont.c include/gpioCont.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 dsp: objs/dsp.o objs/timer.o objs/rpouts.o objs/fpga_awg.o
+	mkdir -p build/bin
+	$(CC) $(CFLAGS) -o build/bin/$@ $^
+
+dsp-test: objs/dsp-test.o objs/gpioCont.o
+	mkdir -p build/bin
+	$(CC) $(CFLAGS) -o build/bin/$@ $^
+
+primeNums: objs/primeNums.o
 	mkdir -p build/bin
 	$(CC) $(CFLAGS) -o build/bin/$@ $^
 
