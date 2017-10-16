@@ -20,6 +20,8 @@
 #define PRINT_READ_LINES false
 #define PRINT_EXEC_LINES true
 #define TIMEDIV 100
+#define MAXTESTTIME 10
+#define TESTDIFTIME 0.001
 
 
 char ERRVAL[] = "/n";
@@ -38,6 +40,7 @@ typedef struct actionTable {
 
 int readActionTable(FILE *fp, long lines);
 int readActionTableLine(char *line, long lineno);
+int execTestTimer(long timeInt);
 int execActionTable(long lines);
 void sig_handler(int signo);
 void _exit(int status);
@@ -50,6 +53,7 @@ void _exit(int status);
 
 actionTable_t *table = NULL;
 
+
 int main(int argc, char *argv[]) {
     printf("hello, world!\n");
 
@@ -57,6 +61,20 @@ int main(int argc, char *argv[]) {
         printf("init GPIO access failed\n");
         _exit(2);
     }
+
+    /*struct sched_param params;
+    params.sched_priority = 99;
+    if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
+      printf("Failed to set priority.\n");
+      _exit(4);
+    }
+
+    while(true) {
+        signal9(1);
+        usleep(1);
+        signal9(0);
+        usleep(1);
+    }*/
 
     /*if (initTimer() == 1){
         printf("init timer failed\n");
@@ -118,12 +136,15 @@ int main(int argc, char *argv[]) {
           _exit(4);
       }
 
-      int execstatus = execActionTable(lines);
+      printf("starting exec test.\n");
+      execTestTimer(TESTDIFTIME);
+      printf("exec test done.\n");
+      /*int execstatus = execActionTable(lines);
       if (execstatus < 0) {
           printf("Failed to exec action table (%i).\n", execstatus);
           _exit(5);
       }
-      printf("exec action table done.\n");
+      printf("exec action table done.\n");*/
 
       _exit(0);
 }
@@ -227,6 +248,33 @@ void executeAction(long line) {
     printf("executed row: %lu pinP:%i pinN:%i a1:%i a2:%i\n", line, pinP, pinN, a1, a2);*/
     signal9(1);
     signal9(0);
+}
+
+
+int execTestTimer(long timeInt) {
+
+    printf("set time\n");
+    struct timespec start;
+    clock_getres(CLOCK_MONOTONIC_RAW, &start);
+    printf("The clock's resolution (precision) is %lu second(s) and %lu nanoseconds\n", start.tv_sec, start.tv_nsec);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start); //TODO check if return val is dif from -1 (error values and stuff)
+    struct timespec now;
+    double deltaT;
+    double nextTime = timeInt;
+
+    do {
+        do {
+            clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+            deltaT = (now.tv_sec - start.tv_sec) + (long double)(now.tv_nsec - start.tv_nsec)/1000000000;
+        } while (deltaT  <= nextTime);
+
+        signalChg9();
+
+        nextTime += timeInt;
+
+    } while(deltaT < MAXTESTTIME);
+
+    return 0;
 }
 
 /* need to add error handling on the clock */

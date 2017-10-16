@@ -15,6 +15,10 @@ volatile uint8_t *gpio_map;
 // I/O access
 volatile unsigned *gpio;
 
+//changesignal function
+int sign9 = 1;
+
+
 int initGPIO() {
     /* open /dev/mem */
     if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
@@ -43,6 +47,8 @@ int initGPIO() {
     gpio = (volatile unsigned *)gpio_map;
 
 
+    printf("Printing functionSel outputset outputclear\n");
+    printFuncSel(); printOutSet(); printOutClr();
     //For testing, GPIO pin number 9 is going to be used
 
     //Before using pin as output mode, must be config to input mode
@@ -52,8 +58,14 @@ int initGPIO() {
     //Init output in GPIO pin number 9
     *(gpio+GPIO_FUNCTION_SEL_0) &= ~(7<<(9*3)); // change the bits 27-29 to input mode (000)
 
+    printf("Printing functionSel outputset outputclear\n");
+    printFuncSel(); printOutSet(); printOutClr();
+
     //Init output in GPIO pin number 9
     *(gpio+GPIO_FUNCTION_SEL_0) |= (1<<(9*3)); // change the bits 27-29 to output mode (001)
+
+    printf("Printing functionSel outputset outputclear\n");
+    printFuncSel(); printOutSet(); printOutClr();
 
     return 0;
 }
@@ -67,6 +79,56 @@ void signal9(int i) { //send signal in pin 9 if i != 0, else clear it
         *(gpio+GPIO_OUTPUT_CLEAR_0) = (1<<9);
     }
 }
+
+void signalON9() {
+    *(gpio+GPIO_OUTPUT_SET_0) = (1<<9);
+}
+
+void signalOFF9() {
+    *(gpio+GPIO_OUTPUT_CLEAR_0) = (1<<9);
+}
+
+void signalONAll() {
+    *(gpio+GPIO_OUTPUT_SET_0) = 0xffffffff;
+}
+
+void signalOFFAll() {
+    *(gpio+GPIO_OUTPUT_CLEAR_0) = 0xffffffff;
+}
+
+void signalChg9() {
+    if(sign9 != 0) {
+        //To set a signal to pin 9, must change the 9th bit to 1 in the address +7
+        *(gpio+GPIO_OUTPUT_SET_0) = (1<<9);
+        sign9 = 0;
+    } else {
+        //To clear a signal in pin 9, must change the 9th bit to 1 in the address +10
+        *(gpio+GPIO_OUTPUT_CLEAR_0) = (1<<9);
+        sign9 = 1;
+    }
+}
+
+
+
+
+
+void printFuncSel() {
+    int val = *(gpio+GPIO_FUNCTION_SEL_0);
+    printf("%x\n", val);
+}
+
+void printOutSet() {
+    int val = *(gpio+GPIO_OUTPUT_SET_0);
+    printf("%x\n", val);
+}
+
+void printOutClr() {
+    int val = *(gpio+GPIO_OUTPUT_CLEAR_0);
+    printf("%x\n", val);
+}
+
+
+
 
 void test() {
 

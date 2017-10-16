@@ -21,3 +21,13 @@
 
 int initGPIO();
 void signal9(int i);
+void signalON9();
+void signalOFF9();
+void signalONAll();
+void signalOFFAll();
+void signalChg9();
+
+
+void printFuncSel();
+void printOutSet();
+void printOutClr();
