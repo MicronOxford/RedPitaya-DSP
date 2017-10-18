@@ -11,7 +11,8 @@
 //#include "timer.h"
 //#include "rpouts.h"
 //#include "fpga_awg.h"
-#include "gpioCont.h"
+#include "gpioControl.h"
+#include "timeControl.h"
 
 #define MAXLINELEN 50
 #define MAXHANDLERLEN 5
@@ -21,7 +22,7 @@
 #define PRINT_EXEC_LINES true
 #define TIMEDIV 100
 #define MAXTESTTIME 10
-#define TESTDIFTIME 0.001
+#define TESTDIFTIME 0.000001
 
 
 char ERRVAL[] = "/n";
@@ -151,30 +152,30 @@ int main(int argc, char *argv[]) {
 
 /******************************************************************************/
 
-  int readActionTable(FILE *fp, long lines) {
-   int bytes_read = 0;
-   long lineno = 0;
-   size_t linelen = (size_t)MAXLINELEN;
-   char *linestr;
-   linestr = (char *) malloc(sizeof(char)*(linelen+1));
+int readActionTable(FILE *fp, long lines) {
+    int bytes_read = 0;
+    long lineno = 0;
+    size_t linelen = (size_t)MAXLINELEN;
+    char *linestr;
+    linestr = (char *) malloc(sizeof(char)*(linelen+1));
 
-   for (lineno = 0; lineno < lines; lineno++){
-      bytes_read = getline(&linestr, &linelen, fp);
-      if (bytes_read <= 0){
-         printf("read %lu lines of action table, but was empty\n", lineno);
-         free(linestr);
-         return -1;
-     }
-     if (readActionTableLine(linestr, lineno) < 0){
-         printf("read ActionTableLine failed on %lu\n", lineno);
-         free(linestr);
-         return -1;
-     }
+    for (lineno = 0; lineno < lines; lineno++){
+        bytes_read = getline(&linestr, &linelen, fp);
+        if (bytes_read <= 0){
+            printf("read %lu lines of action table, but was empty\n", lineno);
+            free(linestr);
+            return -1;
+        }
+        if (readActionTableLine(linestr, lineno) < 0){
+            printf("read ActionTableLine failed on %lu\n", lineno);
+            free(linestr);
+            return -1;
+        }
         //printf("malloc for line %i, addr %p\n", lines_read, nextRow);
         //printf("done  \n");
- }
- free(linestr);
- return 0;
+    }
+    free(linestr);
+    return 0;
 }
 
 int readActionTableLine(char *line, long lineNum) {
@@ -229,15 +230,15 @@ bool getCameraReady() {
 }
 
 int frequency_of_primes (int n) {
-  int i,j;
-  int freq=n-1;
+    int i,j;
+    int freq=n-1;
 
-  for (i=2; i<=n; ++i) {
-    for (j=i-1;j>1;--j){
-        if (i%j==0) {--freq; break;}
+    for (i=2; i<=n; ++i) {
+        for (j=i-1;j>1;--j){
+            if (i%j==0) {--freq; break;}
+        }
     }
-  }
-  return freq;
+    return freq;
 } //TODO remove this
 
 void executeAction(long line) {
@@ -337,7 +338,6 @@ int execActionTable(long lines) {
         } while (deltaT  <= table[line].actionTime);
 
         if(table[line].pinP == -1 && table[line].pinP == -1) {
-
             while(!getCameraReady()) {
                 //IT'S ADVENTURE TIME
             }
@@ -349,7 +349,7 @@ int execActionTable(long lines) {
         table[line].executedTime = deltaT;
     }
 
-//(((X) < (Y)) ? (X) : (Y))
+    //(((X) < (Y)) ? (X) : (Y))
 
     if(PRINT_EXEC_LINES) {
         double difTime = 0.0;
@@ -357,20 +357,17 @@ int execActionTable(long lines) {
         double maxVal = 0.0;
         double minVal = 99.9;
         for(line = 0; line <lines; line++) {
-            //printf("line %lu with time %Lf (diff of %lu) was executed at time %lf\n", line, table[line].actionTime, table[line].executedTime, difTime);
             difTime = table[line].executedTime - table[line].actionTime;
             totalDif += difTime;
-            printf("line %lu with time %Lf (diff of %lf) was executed at time %lf\n", line, table[line].actionTime, table[line].executedTime, difTime);
             if(difTime > maxVal) { maxVal = difTime; }
             if(difTime < minVal) { minVal = difTime; }
+            printf("line %lu with time %Lf (diff of %lf) was executed at time %lf\n", line, table[line].actionTime, table[line].executedTime, difTime);
         }
         printf("The sum/max/min of difference between executedTime and actionTime was %lf / %lf / %lf\n", totalDif, maxVal, minVal);
     }
-    
+
     return 0;
 }
-
-
 
 void sig_handler(int signo){
     if (signo == SIGINT)
