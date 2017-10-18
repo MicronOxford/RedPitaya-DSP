@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <time.h>
+//#include <time.h>
 #include <sched.h>
 #include <math.h>
 //#include "timer.h"
@@ -41,7 +41,7 @@ typedef struct actionTable {
 
 int readActionTable(FILE *fp, long lines);
 int readActionTableLine(char *line, long lineno);
-int execTestTimer(long timeInt);
+int execTestTimer(double timeInt);
 int execActionTable(long lines);
 void sig_handler(int signo);
 void _exit(int status);
@@ -252,21 +252,16 @@ void executeAction(long line) {
 }
 
 
-int execTestTimer(long timeInt) {
+int execTestTimer(double timeInt) {
 
     printf("set time\n");
-    struct timespec start;
-    clock_getres(CLOCK_MONOTONIC_RAW, &start);
-    printf("The clock's resolution (precision) is %lu second(s) and %lu nanoseconds\n", start.tv_sec, start.tv_nsec);
-    clock_gettime(CLOCK_MONOTONIC_RAW, &start); //TODO check if return val is dif from -1 (error values and stuff)
-    struct timespec now;
+    startTime();
     double deltaT;
     double nextTime = timeInt;
 
     do {
         do {
-            clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-            deltaT = (now.tv_sec - start.tv_sec) + (long double)(now.tv_nsec - start.tv_nsec)/1000000000;
+            deltaT = getTimeSinceStart();
         } while (deltaT  <= nextTime);
 
         signalChg9();
@@ -316,12 +311,7 @@ int execActionTable(long lines) {
 
 
     printf("set time\n");
-    struct timespec start;
-    clock_getres(CLOCK_MONOTONIC_RAW, &start);
-    printf("The clock's resolution (precision) is %lu second(s) and %lu nanoseconds\n", start.tv_sec, start.tv_nsec);
-    clock_gettime(CLOCK_MONOTONIC_RAW, &start); //TODO check if return val is dif from -1 (error values and stuff)
-    struct timespec now;
-    //clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+    startTime();
 
     for (line = 0; line < lines; line++){
         double deltaT;
@@ -332,8 +322,7 @@ int execActionTable(long lines) {
         //int asd = frequency_of_primes(99999); printf( "%u\n", asd);
 
         do {
-            clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-            deltaT = (now.tv_sec - start.tv_sec) + (long double)(now.tv_nsec - start.tv_nsec)/1000000000;
+            deltaT = getTimeSinceStart();
             //printf( "%lf %Lf\n", deltaT, table[line].actionTime);
         } while (deltaT  <= table[line].actionTime);
 
@@ -341,7 +330,7 @@ int execActionTable(long lines) {
             while(!getCameraReady()) {
                 //IT'S ADVENTURE TIME
             }
-            clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+            startTime();
             printf("TIME RESET\n");
         }
 
