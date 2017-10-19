@@ -1,3 +1,23 @@
-include/*
+## Autotools generated files
+/Makefile.in
+/configure
+/config.h.in
+/aclocal.m4
+/autom4te\.cache
+/compile
+/depcomp
+/install-sh
+/missing
+
+
+## Python byte-compiled
+*.pyc
+
+
+## Some text editors create these
+~*
 *~
-dsp
+
+
+## Some people use MacOS
+.DS_Store

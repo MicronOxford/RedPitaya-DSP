@@ -1,0 +1,43 @@
+ActionTable Runner
+==================
+
+The GNU build system is used for the build of the ActionTable Runner.
+This means that a developer needs to have automake, autoconf, and GNU
+make installed on the system.  The end user needs only GNU make.
+
+To build:
+
+  1. Run `bootstrap.sh` to generate a configure script.
+
+  2. Run the `configure` from wherever you want to do the build.  It is
+    recommended to do this some place other than the source tree.
+
+  3. Run `make` to have everything build.
+
+See the `INSTALL` file for more detailed instructions.  This file is
+only included on releases.  If you are installing from git checkout,
+the file will be created as part of `bootstrap.sh`.
+
+
+Cross compiling
+---------------
+
+For cross compiling, use the `--build' and `--host' options of the
+configure script.  Like so:
+
+  ## Build in x86_64 for an armv7l (RedPitaya)
+  configure --build=x86_64-linux-gnu --host=arm-linux-gnueabihf
+
+This requires a compiler for the host architecture, as well as the
+libraries for cross-compilation.  On Debian 9, these would be the
+packages gcc-arm-linux-gnueabihf and libc6-armhf-cross.
+
+
+Start the server
+----------------
+
+Run server from a prompt on the Red Pitaya.
+
+the Pyro URI will be displayed with a random port for testing.
+
+If connecting with cockpit fails with a timeout error, this is probably because the versions of Pyro on the cockpit machine and the Red Pitaya do not match.
