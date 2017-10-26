@@ -9,25 +9,21 @@
 //#define PAGE_SIZE (4*1024)
 #define BLOCK_SIZE (4*1024)
 
-int  mem_fd;
-volatile uint8_t *gpio_map;
-
 // I/O access
 volatile unsigned *gpio;
 
-//changesignal function
-int sign9 = 1;
+int sign9 = 1; //for signalChg9 function
 
 
 int initGPIO() {
-    /* open /dev/mem */
-    if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
+    int  mem_fd = open("/dev/mem", O_RDWR|O_SYNC); // open /dev/mem
+    if (mem_fd < 0) {
         printf("can't open /dev/mem \n");
         return 1;
     }
 
     /* mmap GPIO */
-    gpio_map = mmap(
+    gpio = mmap(
         NULL,             //Any adddress in our space will do
         BLOCK_SIZE,       //Map length
         PROT_READ|PROT_WRITE,// Enable reading & writting to mapped memory
@@ -38,17 +34,13 @@ int initGPIO() {
 
     close(mem_fd); //No need to keep mem_fd open after mmap
 
-    if (gpio_map == MAP_FAILED) {
-        printf("mmap error 0x%x\n", (uint32_t)GPIO_BASE);//errno also set!
+    if (gpio == MAP_FAILED) {
+        printf("mmap error 0x%08x\n", (uint32_t)GPIO_BASE);//errno also set!
         return 1;
     }
 
-    // Always use volatile pointer!
-    gpio = (volatile unsigned *)gpio_map;
 
-
-    printf("Printing functionSel outputset outputclear\n");
-    printFuncSel(); printOutSet(); printOutClr();
+    // prinfSTUFF();
     //For testing, GPIO pin number 9 is going to be used
 
     //Before using pin as output mode, must be config to input mode
@@ -58,14 +50,12 @@ int initGPIO() {
     //Init output in GPIO pin number 9
     *(gpio+GPIO_FUNCTION_SEL_0) &= ~(7<<(9*3)); // change the bits 27-29 to input mode (000)
 
-    printf("Printing functionSel outputset outputclear\n");
-    printFuncSel(); printOutSet(); printOutClr();
+    // prinfSTUFF();
 
     //Init output in GPIO pin number 9
     *(gpio+GPIO_FUNCTION_SEL_0) |= (1<<(9*3)); // change the bits 27-29 to output mode (001)
 
-    printf("Printing functionSel outputset outputclear\n");
-    printFuncSel(); printOutSet(); printOutClr();
+    // prinfSTUFF();
 
     return 0;
 }
@@ -110,7 +100,10 @@ void signalChg9() {
 
 
 
-
+void prinfSTUFF() {
+    printf("Printing functionSel outputset outputclear\n");
+    printFuncSel(); printOutSet(); printOutClr();
+}
 
 void printFuncSel() {
     int val = *(gpio+GPIO_FUNCTION_SEL_0);
@@ -130,9 +123,9 @@ void printOutClr() {
 
 
 
-void test() {
+// void test() {
 
-    int g, rep;
+//     int g, rep;
 
 // Switch GPIO 7..11 to output mode
 
@@ -144,20 +137,20 @@ void test() {
 \************************************************************************/
 
 // Set GPIO pins 7-11 to output
-    for (g=7; g<=11; g++) {
-        INP_GPIO(g); // must use INP_GPIO before we can use OUT_GPIO
-        OUT_GPIO(g);
-    }
+//     for (g=7; g<=11; g++) {
+//         INP_GPIO(g); // must use INP_GPIO before we can use OUT_GPIO
+//         OUT_GPIO(g);
+//     }
 
-    for (rep=0; rep<10; rep++) {
-        for (g=7; g<=11; g++) {
-            GPIO_SET = 1<<g;
-            sleep(1);
-        }
-        for (g=7; g<=11; g++) {
-            GPIO_CLR = 1<<g;
-            sleep(1);
-        }
-    }
+//     for (rep=0; rep<10; rep++) {
+//         for (g=7; g<=11; g++) {
+//             GPIO_SET = 1<<g;
+//             sleep(1);
+//         }
+//         for (g=7; g<=11; g++) {
+//             GPIO_CLR = 1<<g;
+//             sleep(1);
+//         }
+//     }
 
-}
+// }

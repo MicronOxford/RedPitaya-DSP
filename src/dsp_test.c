@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
-//#include <time.h>
+#include <time.h>
 #include <sched.h>
 #include <math.h>
 //#include "timer.h"
@@ -13,89 +13,56 @@
 //#include "fpga_awg.h"
 #include "gpioControl.h"
 #include "timeControl.h"
+#include "actionTable.h"
 
-#define MAXLINELEN 50
-#define MAXHANDLERLEN 5
-#define DELIM " "
-#define BILLION  1000000000L
-#define PRINT_READ_LINES false
+// #define MAXLINELEN 50
+// #define MAXHANDLERLEN 5
+// #define DELIM " "
+// #define PRINT_READ_LINES false
 #define PRINT_EXEC_LINES true
 #define TIMEDIV 100
 #define MAXTESTTIME 10
-#define TESTDIFTIME 0.000001
+#define TESTNANOSEC 1000
+#define TEST2NUMTIMES 100
+//#define TESTMICROSEC 1
 
 
 char ERRVAL[] = "/n";
 
-uint32_t INT_MAX = UINT32_MAX;
-
-typedef struct actionTable {
-    long double actionTime;
-    int pinP;
-    int pinN;
-    uint32_t a1;
-    uint32_t a2;
-    double executedTime;
-} actionTable_t;
+//uint32_t INT_MAX = UINT32_MAX;
 
 
-int readActionTable(FILE *fp, long lines);
-int readActionTableLine(char *line, long lineno);
-int execTestTimer(double timeInt);
+typedef struct testTable {
+    struct timespec actTime;
+    struct timespec execTime;
+} testTable_t;
+
+
+typedef struct testTable2 {
+    long unsigned int lsbNextTime;
+    long unsigned int msbNextTime;
+} testTable_t2;
+
+
+
+void initializeAll();
 int execActionTable(long lines);
 void sig_handler(int signo);
 void _exit(int status);
 
-/*void spinwait(int loops) {
-    int t = 0;
-    while (t != loops)
-        t += 1;
-}*/
+int execTestTimer(long nanoSecInt);
 
-actionTable_t *table = NULL;
+
+void execTestTimer2();
+
+
+//actionTable_t *table = NULL;
+
+testTable_t *testTbl = 0;
+testTable_t2 *testTbl2 = 0; 
 
 
 int main(int argc, char *argv[]) {
-    printf("hello, world!\n");
-
-    if(initGPIO() != 0){
-        printf("init GPIO access failed\n");
-        _exit(2);
-    }
-
-    /*struct sched_param params;
-    params.sched_priority = 99;
-    if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
-      printf("Failed to set priority.\n");
-      _exit(4);
-    }
-
-    while(true) {
-        signal9(1);
-        usleep(1);
-        signal9(0);
-        usleep(1);
-    }*/
-
-    /*if (initTimer() == 1){
-        printf("init timer failed\n");
-        _exit(2);
-    }*/
-
-    /*if(initOuts() != 0){
-        fprintf(stderr, "Rp api init failed!\n");
-        _exit(2);
-    }*/
-
-    /*if(fpga_awg_init() != 0){
-        fprintf(stderr, "FPGA init failed!\n");
-        _exit(2);
-    }*/
-
-    if (signal(SIGINT, sig_handler) == SIG_ERR){
-        printf("Signal handler failed\n");
-    }
-
 
     if (argc != 2) {
         printf("num of args used was %u\n", argc);
@@ -103,126 +70,66 @@ int main(int argc, char *argv[]) {
         _exit(1);
     }
 
-    FILE *fp;
-    fp = fopen(argv[1], "r");
-    if (fp == NULL) {
-        printf("Could not open file %s\n", argv[1]);
-        _exit(2);
-    }
+    initializeAll();
 
-    long lines = 0;
-    int ch;
-    while (EOF != (ch=getc(fp)))
-        if (ch=='\n')
-            ++lines;
-       printf("action table is %lu lines long\n", lines);
-       rewind(fp);
-
-       printf("alloc action table\n");
-       table = malloc(sizeof(actionTable_t)*lines);
-
-       if (readActionTable(fp, lines) != 0){
-          printf("Failed to read action table file.\n");
-          _exit(3);
-      }
-      printf("read action table file.\n");
+    long lines = createActionTable(argv[1]);
+    if(lines < 0) _exit(abs(lines));
 
     // before we set ourselves to more important than the terminal, flush.
-      fflush(stdout);
-      
-      struct sched_param params;
-      params.sched_priority = 99;
-      if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
-          printf("Failed to set priority.\n");
-          _exit(4);
-      }
+    fflush(stdout);
 
-      printf("starting exec test.\n");
-      execTestTimer(TESTDIFTIME);
-      printf("exec test done.\n");
-      /*int execstatus = execActionTable(lines);
-      if (execstatus < 0) {
-          printf("Failed to exec action table (%i).\n", execstatus);
-          _exit(5);
-      }
-      printf("exec action table done.\n");*/
+    struct sched_param params;
+    params.sched_priority = 99;
+    if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
+        printf("Failed to set priority.\n");
+        _exit(4);
+    }
 
-      _exit(0);
+    printf("starting exec test.\n");
+    execTestTimer2();
+    printf("exec test done.\n");
+    // int execstatus = execActionTable(lines);
+    // if (execstatus < 0) {
+    //     printf("Failed to exec action table (%i).\n", execstatus);
+    //     _exit(5);
+    // }
+    printf("exec action table done.\n");
+    _exit(0);
 }
 
 /******************************************************************************/
 
-int readActionTable(FILE *fp, long lines) {
-    int bytes_read = 0;
-    long lineno = 0;
-    size_t linelen = (size_t)MAXLINELEN;
-    char *linestr;
-    linestr = (char *) malloc(sizeof(char)*(linelen+1));
+void initializeAll() {
 
-    for (lineno = 0; lineno < lines; lineno++){
-        bytes_read = getline(&linestr, &linelen, fp);
-        if (bytes_read <= 0){
-            printf("read %lu lines of action table, but was empty\n", lineno);
-            free(linestr);
-            return -1;
-        }
-        if (readActionTableLine(linestr, lineno) < 0){
-            printf("read ActionTableLine failed on %lu\n", lineno);
-            free(linestr);
-            return -1;
-        }
-        //printf("malloc for line %i, addr %p\n", lines_read, nextRow);
-        //printf("done  \n");
+    if(initGPIO() != 0){
+        printf("init GPIO access failed\n");
+        _exit(2);
     }
-    free(linestr);
-    return 0;
-}
 
-int readActionTableLine(char *line, long lineNum) {
+    if(initARMTimer() != 0){
+        printf("init CLOCK access failed\n");
+        _exit(2);
+    }
 
-    char *nstime_s;
-    char *pinP_s;
-    char *pinN_s;
-    char *a1_s;
-    char *a2_s;
+    // if (initTimer() == 1){
+    //     printf("init timer failed\n");
+    //     _exit(2);
+    // }
 
-    //printf("processing line num %lu - '%s", lineNum, line);
+    // if(initOuts() != 0){
+    //     fprintf(stderr, "Rp api init failed!\n");
+    //     _exit(2);
+    // }
 
-    nstime_s = strtok(line, DELIM);  // REMINDER: first strtok call needs the str.
-    if (nstime_s == NULL){
-        printf("action nstime is NULL for '%s'\n", line);
-        return -1;
+    // if(fpga_awg_init() != 0){
+    //     fprintf(stderr, "FPGA init failed!\n");
+    //     _exit(2);
+    // }
+
+    if (signal(SIGINT, sig_handler) == SIG_ERR){
+        printf("Signal handler failed\n");
     }
-    pinP_s = strtok(NULL, DELIM);
-    if (pinP_s == NULL){
-        printf("pinP is NULL for %s\n", line);
-        return -1;
-    }
-    pinN_s = strtok(NULL, DELIM);
-    if (pinN_s == NULL){
-        printf("pinN is NULL for %s\n", line);
-        return -1;
-    }
-    a1_s = strtok(NULL, DELIM);
-    if (a1_s == NULL){
-        printf("a1_s is NULL for %s", line);
-        return -1;
-    }
-    a2_s = strtok(NULL, DELIM);
-    if (a2_s == NULL){
-        printf("a2_s is NULL for %s", line);
-        return -1;
-    }
-    //table[lineNum].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / 1000000000L;
-    table[lineNum].actionTime = strtold(nstime_s, NULL);
-    table[lineNum].pinP = strtol(pinP_s, NULL, 10);
-    table[lineNum].pinN = strtol(pinN_s, NULL, 10);
-    table[lineNum].a1 = strtol(a1_s, NULL, 10);
-    table[lineNum].a2 = strtol(a2_s, NULL, 10);
-    if(PRINT_READ_LINES) {
-        printf("row: %lu time:%Lf pinP:%i pinN:%i a1:%i a2:%i\n", lineNum, table[lineNum].actionTime, table[lineNum].pinP, table[lineNum].pinN, table[lineNum].a1, table[lineNum].a2);
-    }
-    return 0;
+
 }
 
 bool getCameraReady() {
@@ -242,35 +149,13 @@ int frequency_of_primes (int n) {
 } //TODO remove this
 
 void executeAction(long line) {
-    /*int pinP = table[line].pinP;
+    int pinP = table[line].pinP;
     int pinN = table[line].pinN;
     uint32_t a1 = table[line].a1;
     uint32_t a2 = table[line].a2;
-    printf("executed row: %lu pinP:%i pinN:%i a1:%i a2:%i\n", line, pinP, pinN, a1, a2);*/
-    signal9(1);
-    signal9(0);
-}
-
-
-int execTestTimer(double timeInt) {
-
-    printf("set time\n");
-    startTime();
-    double deltaT;
-    double nextTime = timeInt;
-
-    do {
-        do {
-            deltaT = getTimeSinceStart();
-        } while (deltaT  <= nextTime);
-
-        signalChg9();
-
-        nextTime += timeInt;
-
-    } while(deltaT < MAXTESTTIME);
-
-    return 0;
+    printf("executed row: %lu pinP:%i pinN:%i a1:%i a2:%i\n", line, pinP, pinN, a1, a2);
+    // signal9(1);
+    // signal9(0);
 }
 
 /* need to add error handling on the clock */
@@ -374,4 +259,135 @@ void _exit(int status) {
     out_setpins_N(0);
     fpga_awg_exit();*/
     exit(status);
+}
+
+
+/******************************************************************************/
+
+long createTestTable(long nanoInt, long numOfInt){
+
+    printf("alloc test table\n");
+    testTbl = malloc(sizeof(testTable_t)*numOfInt);
+
+    long i;
+    struct timespec testTime;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &testTime);
+    testTime.tv_sec++;
+    for(i=0; i<numOfInt; i++) {
+        testTbl[i].actTime = testTime;
+        addNanoSecToTime(nanoInt, &testTime);
+    }
+
+    // if(readActionTable(fp, lines) != 0) {
+    //     printf("Failed to read action table file.\n");
+    //     return -3;
+    // }
+    // printf("read action table file.\n");
+
+    return 0;
+}
+
+int execTestTimer(long nanoSecInt) {
+
+    printf("creating test table\n");
+    long numOfInt = 100;
+    createTestTable(nanoSecInt, numOfInt);
+    printf("setting time\n");
+    startTime();
+    struct timespec time;
+
+    long i;
+    for(i=0; i<numOfInt; i++){
+        time = testTbl[i].actTime;
+        while(compareTimeToNow(&time)) { /* sleep is overrated... */ }
+        testTbl[i].execTime = getNow();
+        //signalChg9();
+        //printf("TEST\n");
+    }
+
+    //signalOFF9();
+    printf("DONE\n");
+
+
+    if(PRINT_EXEC_LINES) {
+        double difTime = 0.0;
+        double totalDif = 0.0;
+        double maxVal = 0.0;
+        double minVal = 99.9;
+        for(i=0; i<numOfInt; i++) {
+            double actionTime = turnTime(testTbl[i].actTime);
+            double executedTime = turnTime(testTbl[i].execTime);
+            difTime = executedTime - actionTime;
+            totalDif += difTime;
+            if(difTime > maxVal) { maxVal = difTime; }
+            if(difTime < minVal) { minVal = difTime; }
+            printf("line %lu with time %lf (diff of %lf) was executed at time %lf\n", i, actionTime, executedTime, difTime);
+        }
+        printf("The sum/max/min of difference between executedTime and actionTime was %9.9lf / %9.9lf / %9.9lf\n", totalDif, maxVal, minVal);
+    }
+
+    
+    return 0;
+}
+
+/*int execTestTimerOLD(long nanoSecInt) {
+
+    printf("set time\n");
+    startTime();
+    addNanoSecToNext(nanoSecInt);
+
+    while(getSecondsSinceStart() < MAXTESTTIME) {
+
+        while(compareNextToNow()) { }
+        signalChg9();
+        addNanoSecToNext(nanoSecInt);
+    }
+
+    signalOFF9();
+    
+    return 0;
+}*/
+
+
+
+
+
+
+
+void createTestTable2(long nanoInt, long numOfInt){
+
+    printf("alloc test table2\n");
+    testTbl2 = malloc(sizeof(testTable_t2)*numOfInt);
+
+    long i;
+    unsigned long int value = BILLION/NANO_PER_CLICK;
+    unsigned long int inc = nanoInt/NANO_PER_CLICK;
+
+    for(i=0; i<numOfInt; i++) {
+        testTbl2[i].lsbNextTime = value;
+        value += inc;
+    }
+}
+
+void execTestTimer2() {
+
+    printf("creating test table2\n");
+    long numOfInt = TEST2NUMTIMES;
+    createTestTable2(TESTNANOSEC, numOfInt);
+    // printf("setting time\n");
+    // resetTestTime();
+
+    long i;
+    for(i=0; i<numOfInt; i++){
+        setNextTime(testTbl2[i].lsbNextTime, testTbl2[i].msbNextTime);
+
+        while(isARMTimerLessThanNext()) {
+            updateARMTimer();
+        }
+        signalChg9();
+        // printf("TEST\n");
+    }
+
+    signalOFF9();
+    // printf("DONE2\n");
 }

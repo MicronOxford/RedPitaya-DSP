@@ -44,11 +44,14 @@ objs/gpioControl.o: src/gpioControl.c include/gpioControl.h
 objs/timeControl.o: src/timeControl.c include/timeControl.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
+objs/actionTable.o: src/actionTable.c include/actionTable.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 dsp: objs/dsp.o objs/timer.o objs/rpouts.o objs/fpga_awg.o
 	mkdir -p build/bin
 	$(CC) $(CFLAGS) -o build/bin/$@ $^
 
-dsp-test: objs/dsp-test.o objs/gpioControl.o objs/timeControl.o
+dsp-test: objs/dsp-test.o objs/gpioControl.o objs/timeControl.o objs/actionTable.o
 	mkdir -p build/bin
 	$(CC) $(CFLAGS) -o build/bin/$@ $^
 
