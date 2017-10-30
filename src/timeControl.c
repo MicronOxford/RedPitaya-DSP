@@ -108,7 +108,40 @@ double turnTime(struct timespec time) {
 
 
 
+/*int initTest() {
 
+    int  mem_fd = open("/dev/mem", O_RDWR|O_SYNC); // open /dev/mem
+    if (mem_fd < 0) {
+        printf("can't open /dev/mem \n");
+        return 1;
+    }
+
+    // mmap ARM Timer
+    ARMTimer = mmap(
+        NULL,             //Any adddress in our space will do
+        BLOCK_SIZE,       //Map length
+        PROT_READ|PROT_WRITE,// Enable reading & writting to mapped memory
+        MAP_SHARED,       //Shared with other processes
+        mem_fd,           //File to map
+        ARM_TIMER_CTL//Offset to ARM timer
+        );
+
+    close(mem_fd); //No need to keep mem_fd open after mmap
+
+    if (ARMTimer == MAP_FAILED) {
+        printf("mmap error 0x%08x\n", (uint32_t)ARM_TIMER_CTL);//errno also set!
+        return 1;
+    }
+
+
+    printf("+0 %x\n", *(ARMTimer));
+
+    // printf("+0 %x\n", *(ARMTimer));
+    // printf("+7 %x\n", *(ARMTimer+7));
+    // printf("+8 %x\n", *(ARMTimer+8));
+
+    return 0;
+}*/
 
 
 
@@ -127,13 +160,13 @@ int initARMTimer() {
         PROT_READ|PROT_WRITE,// Enable reading & writting to mapped memory
         MAP_SHARED,       //Shared with other processes
         mem_fd,           //File to map
-        BCM2708_CONTROL_REG//Offset to ARM timer
+        ARM_QA7_CONTROL_REG//Offset to ARM timer
         );
 
     close(mem_fd); //No need to keep mem_fd open after mmap
 
     if (ARMTimer == MAP_FAILED) {
-        printf("mmap error 0x%08x\n", (uint32_t)BCM2708_CONTROL_REG);//errno also set!
+        printf("mmap error 0x%08x\n", (uint32_t)ARM_QA7_CONTROL_REG);//errno also set!
         return 1;
     }
 
@@ -146,8 +179,10 @@ int initARMTimer() {
 
 
 /*void resetTestTime() {
-    *(ARMTimer+CLOCK_LSB) = 0;
-    *(ARMTimer+CLOCK_MSB) = 0;
+    lsbARMTimer = 0;
+    msbARMTimer = (*(ARMTimer+CLOCK_MSB) + 1);
+    *(ARMTimer+CLOCK_LSB) = lsbARMTimer;
+    *(ARMTimer+CLOCK_MSB) = msbARMTimer;
 }*/
 
 void updateARMTimer() {

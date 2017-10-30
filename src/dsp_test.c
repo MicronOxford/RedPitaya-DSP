@@ -23,7 +23,10 @@
 #define TIMEDIV 100
 #define MAXTESTTIME 10
 #define TESTNANOSEC 1000
-#define TEST2NUMTIMES 100
+
+#define TESTARMNUMBER 100000
+#define TESTARMNSECON 2000
+#define TESTARMNSECOFF 3000
 //#define TESTMICROSEC 1
 
 
@@ -38,10 +41,11 @@ typedef struct testTable {
 } testTable_t;
 
 
-typedef struct testTable2 {
+typedef struct testARMTimerTable {
     long unsigned int lsbNextTime;
     long unsigned int msbNextTime;
-} testTable_t2;
+    int val;
+} testARMTimerTable_t;
 
 
 
@@ -52,14 +56,13 @@ void _exit(int status);
 
 int execTestTimer(long nanoSecInt);
 
-
-void execTestTimer2();
+void execARMTimerTest();
 
 
 //actionTable_t *table = NULL;
 
 testTable_t *testTbl = 0;
-testTable_t2 *testTbl2 = 0; 
+testARMTimerTable_t *testARMTbl = 0; 
 
 
 int main(int argc, char *argv[]) {
@@ -86,7 +89,7 @@ int main(int argc, char *argv[]) {
     }
 
     printf("starting exec test.\n");
-    execTestTimer2();
+    execARMTimerTest();
     printf("exec test done.\n");
     // int execstatus = execActionTable(lines);
     // if (execstatus < 0) {
@@ -107,7 +110,7 @@ void initializeAll() {
     }
 
     if(initARMTimer() != 0){
-        printf("init CLOCK access failed\n");
+        printf("init ARM Timer access failed\n");
         _exit(2);
     }
 
@@ -250,6 +253,8 @@ void sig_handler(int signo){
 
 void _exit(int status) {
     free(table);
+    free(testTbl);
+    free(testARMTbl);
     // rp_GenAmp(RP_CH_1, 0);
     // rp_GenAmp(RP_CH_2, 0);
     // rp_ApinReset();
@@ -354,37 +359,53 @@ int execTestTimer(long nanoSecInt) {
 
 
 
-void createTestTable2(long nanoInt, long numOfInt){
+void createARMTimerTestTable(long numOfInt){
 
     printf("alloc test table2\n");
-    testTbl2 = malloc(sizeof(testTable_t2)*numOfInt);
+    testARMTbl = malloc(sizeof(testARMTimerTable_t)*numOfInt);
+
+    unsigned long int myLSBTime;
+    unsigned long int myMSBTime;
+    getARMTimer(&myLSBTime, &myMSBTime);
 
     long i;
-    unsigned long int value = BILLION/NANO_PER_CLICK;
-    unsigned long int inc = nanoInt/NANO_PER_CLICK;
+    unsigned long long int timeToSet = BILLION;
+    //unsigned long int inc = nanoInt/NANO_PER_CLICK;
 
     for(i=0; i<numOfInt; i++) {
-        testTbl2[i].lsbNextTime = value;
-        value += inc;
+        if(i%2) {
+            timeToSet += TESTARMNSECON;
+            testARMTbl[i].val = 0;
+        } else {
+            timeToSet += TESTARMNSECOFF;
+            testARMTbl[i].val = 1;
+        }
+        testARMTbl[i].lsbNextTime = myLSBTime + timeToSet/NANO_PER_CLICK;
+        testARMTbl[i].msbNextTime = myMSBTime;
     }
 }
 
-void execTestTimer2() {
+void execARMTimerTest() {
 
-    printf("creating test table2\n");
-    long numOfInt = TEST2NUMTIMES;
-    createTestTable2(TESTNANOSEC, numOfInt);
+    printf("creating ARMTimer test table\n");
+    long numOfInt = TESTARMNUMBER;
+    createARMTimerTestTable(numOfInt);
     // printf("setting time\n");
     // resetTestTime();
 
+    // unsigned long int myLSBTime;
+    // unsigned long int myMSBTime;
+    // getARMTimer(&myLSBTime, &myMSBTime);
+
     long i;
     for(i=0; i<numOfInt; i++){
-        setNextTime(testTbl2[i].lsbNextTime, testTbl2[i].msbNextTime);
+        setNextTime(testARMTbl[i].lsbNextTime, testARMTbl[i].msbNextTime);
 
         while(isARMTimerLessThanNext()) {
             updateARMTimer();
         }
-        signalChg9();
+        signal9(testARMTbl[i].val);
+        // signalChg9();
         // printf("TEST\n");
     }
 
