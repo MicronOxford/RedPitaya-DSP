@@ -42,8 +42,9 @@ typedef struct testTable {
 
 
 typedef struct testARMTimerTable {
-    long unsigned int lsbNextTime;
-    long unsigned int msbNextTime;
+    uint64_t nextTime;
+    //long unsigned int lsbNextTime;
+    //long unsigned int msbNextTime;
     int val;
 } testARMTimerTable_t;
 
@@ -247,8 +248,9 @@ int execActionTable(long lines) {
 }
 
 void sig_handler(int signo){
-    if (signo == SIGINT)
+    if (signo == SIGINT) {
         _exit(5);
+    }
 }
 
 void _exit(int status) {
@@ -364,9 +366,8 @@ void createARMTimerTestTable(long numOfInt){
     printf("alloc test table2\n");
     testARMTbl = malloc(sizeof(testARMTimerTable_t)*numOfInt);
 
-    unsigned long int myLSBTime;
-    unsigned long int myMSBTime;
-    getARMTimer(&myLSBTime, &myMSBTime);
+    // unsigned long int myARMTime;
+    // getARMTimer(&myARMTime);
 
     long i;
     unsigned long long int timeToSet = BILLION;
@@ -380,8 +381,8 @@ void createARMTimerTestTable(long numOfInt){
             timeToSet += TESTARMNSECOFF;
             testARMTbl[i].val = 1;
         }
-        testARMTbl[i].lsbNextTime = myLSBTime + timeToSet/NANO_PER_CLICK;
-        testARMTbl[i].msbNextTime = myMSBTime;
+        testARMTbl[i].nextTime = timeToSet/NANO_PER_CLICK;
+        // testARMTbl[i].nextTime = myARMTime + timeToSet/NANO_PER_CLICK;
     }
 }
 
@@ -397,12 +398,14 @@ void execARMTimerTest() {
     // unsigned long int myMSBTime;
     // getARMTimer(&myLSBTime, &myMSBTime);
 
+    startARMTimer();
+
     long i;
     for(i=0; i<numOfInt; i++){
-        setNextTime(testARMTbl[i].lsbNextTime, testARMTbl[i].msbNextTime);
+        setNextTime(testARMTbl[i].nextTime);
 
         while(isARMTimerLessThanNext()) {
-            updateARMTimer();
+
         }
         signal9(testARMTbl[i].val);
         // signalChg9();

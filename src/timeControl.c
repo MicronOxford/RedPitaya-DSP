@@ -17,12 +17,12 @@ struct timespec next;
 
 
 // clock access
-volatile unsigned *ARMTimer;
+volatile uint32_t *ARMControl;
+volatile uint64_t *ARMTimer;
 
-long unsigned int lsbARMTimer;
-long unsigned int msbARMTimer;
-long unsigned int lsbNextTime;
-long unsigned int msbNextTime;
+uint64_t startARMTime;
+//uint64_t nowTime;
+uint64_t nextTime;
 
 
 
@@ -154,7 +154,7 @@ int initARMTimer() {
     }
 
     /* mmap ARM Timer */
-    ARMTimer = mmap(
+    ARMControl = mmap(
         NULL,             //Any adddress in our space will do
         BLOCK_SIZE,       //Map length
         PROT_READ|PROT_WRITE,// Enable reading & writting to mapped memory
@@ -165,10 +165,12 @@ int initARMTimer() {
 
     close(mem_fd); //No need to keep mem_fd open after mmap
 
-    if (ARMTimer == MAP_FAILED) {
+    if (ARMControl == MAP_FAILED) {
         printf("mmap error 0x%08x\n", (uint32_t)ARM_QA7_CONTROL_REG);//errno also set!
         return 1;
     }
+
+    ARMTimer = (uint64_t *)&ARMControl[ARM_TIMER_OFFSET];
 
     // printf("+0 %x\n", *(ARMTimer));
     // printf("+7 %x\n", *(ARMTimer+7));
@@ -185,25 +187,33 @@ int initARMTimer() {
     *(ARMTimer+CLOCK_MSB) = msbARMTimer;
 }*/
 
-void updateARMTimer() {
-    lsbARMTimer = *(ARMTimer+CLOCK_LSB);
-    msbARMTimer = *(ARMTimer+CLOCK_MSB);
+void startARMTimer() {
+    startARMTime = *(ARMTimer);
 }
 
-void getARMTimer(unsigned long int *lsbTime, unsigned long int *msbTime) {
+/*void updateARMTimer() {
+    nowTime = *(ARMTimer);
+    // lsbARMTimer = *(ARMTimer+CLOCK_LSB);
+    // msbARMTimer = *(ARMTimer+CLOCK_MSB);
+}*/
+
+/*void getARMTimer(uint64_t *mTime) {
     updateARMTimer();
-    *lsbTime = lsbARMTimer;
-    *msbTime = msbARMTimer;
-}
+   *mTime = nowTime;
+    // *lsbTime = lsbARMTimer;
+    // *msbTime = msbARMTimer;
+}*/
 
-void setNextTime(unsigned long int lsbTime, unsigned long int msbTime) {
-    lsbNextTime = lsbTime;
-    msbNextTime = msbTime;
+void setNextTime(uint64_t nTime) {
+   nextTime = startARMTime+nTime;
+    // lsbNextTime = lsbTime;
+    // msbNextTime = msbTime;
 }
 
 int isARMTimerLessThanNext() { //return 1 if now < next
-    if(msbARMTimer != msbNextTime) {
-        return (msbARMTimer < msbNextTime);
-    }
-    return lsbARMTimer < lsbNextTime;
+   return *(ARMTimer) < nextTime;
+    // if(msbARMTimer != msbNextTime) {
+    //     return (msbARMTimer < msbNextTime);
+    // }
+    // return lsbARMTimer < lsbNextTime;
 }
