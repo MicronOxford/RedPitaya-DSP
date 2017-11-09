@@ -5,12 +5,16 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <stdint.h>
 
 //#define PAGE_SIZE (4*1024)
 #define BLOCK_SIZE (4*1024)
 
 // I/O access
 volatile unsigned *gpio;
+
+// volatile uint32_t *toSendAddr;
+// uint32_t toSendValue;
 
 int sign9 = 1; //for signalChg9 function
 
@@ -99,6 +103,24 @@ void signalChg9() {
 }
 
 
+void setSignal9(int i, volatile uint32_t **addr, uint32_t *val) {
+    if(i != 0) {
+        *addr = (gpio+GPIO_OUTPUT_SET_0);
+        *val = (1<<9);
+    } else {
+        *addr = (gpio+GPIO_OUTPUT_CLEAR_0);
+        *val = (1<<9);
+    }
+}
+
+/*void setToSend(uint32_t *addr, uint32_t val) {
+    toSendAddr = addr;
+    toSendValue = val;
+}
+
+inline void useToSend() {
+    *(toSendAddr) = toSendValue;
+}*/
 
 void prinfSTUFF() {
     printf("Printing functionSel outputset outputclear\n");

@@ -21,8 +21,8 @@
 // #define PRINT_READ_LINES false
 #define PRINT_EXEC_LINES true
 #define TIMEDIV 100
-#define MAXTESTTIME 10
-#define TESTNANOSEC 1000
+//#define MAXTESTTIME 10
+//#define TESTNANOSEC 1000
 
 #define TESTARMNUMBER 100000
 #define TESTARMNSECON 2000
@@ -35,22 +35,21 @@ char ERRVAL[] = "/n";
 //uint32_t INT_MAX = UINT32_MAX;
 
 
-typedef struct testTable {
-    struct timespec actTime;
-    struct timespec execTime;
-} testTable_t;
+// typedef struct testTable {
+//     struct timespec actTime;
+//     struct timespec execTime;
+// } testTable_t;
 
 
 typedef struct testARMTimerTable {
     uint64_t nextTime;
-    //long unsigned int lsbNextTime;
-    //long unsigned int msbNextTime;
     int val;
 } testARMTimerTable_t;
 
 
 
 void initializeAll();
+void maxPriority();
 int execActionTable(long lines);
 void sig_handler(int signo);
 void _exit(int status);
@@ -62,7 +61,7 @@ void execARMTimerTest();
 
 //actionTable_t *table = NULL;
 
-testTable_t *testTbl = 0;
+//testTable_t *testTbl = 0;
 testARMTimerTable_t *testARMTbl = 0; 
 
 
@@ -82,12 +81,7 @@ int main(int argc, char *argv[]) {
     // before we set ourselves to more important than the terminal, flush.
     fflush(stdout);
 
-    struct sched_param params;
-    params.sched_priority = 99;
-    if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
-        printf("Failed to set priority.\n");
-        _exit(4);
-    }
+    maxPriority();
 
     printf("starting exec test.\n");
     execARMTimerTest();
@@ -134,6 +128,15 @@ void initializeAll() {
         printf("Signal handler failed\n");
     }
 
+}
+
+void maxPriority() {
+    struct sched_param params;
+    params.sched_priority = sched_get_priority_max(SCHED_FIFO);
+    if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
+        printf("Failed to set priority.\n");
+        _exit(4);
+    }
 }
 
 bool getCameraReady() {
@@ -200,31 +203,24 @@ int execActionTable(long lines) {
 
 
     printf("set time\n");
-    startTime();
+    startARMTimer();
 
     for (line = 0; line < lines; line++){
-        double deltaT;
 
-        //printf("now - i: %i , sec: %li , nano: %li\n", nowI, now.tv_sec, now.tv_nsec);
-        //deltaT = (now.tv_sec - start.tv_sec) + (long double)(now.tv_nsec - start.tv_nsec)/1000000000;
-        //printf( "%lf\n", deltaT);
-        //int asd = frequency_of_primes(99999); printf( "%u\n", asd);
+        setNextTime(table[line].actionTime);
 
-        do {
-            deltaT = getTimeSinceStart();
-            //printf( "%lf %Lf\n", deltaT, table[line].actionTime);
-        } while (deltaT  <= table[line].actionTime);
+        while(isARMTimerLessThanNext());
 
         if(table[line].pinP == -1 && table[line].pinP == -1) {
             while(!getCameraReady()) {
                 //IT'S ADVENTURE TIME
             }
-            startTime();
+            startARMTimer();
             printf("TIME RESET\n");
         }
 
         executeAction(line);
-        table[line].executedTime = deltaT;
+        //table[line].executedTime = deltaT;
     }
 
     //(((X) < (Y)) ? (X) : (Y))
@@ -255,7 +251,7 @@ void sig_handler(int signo){
 
 void _exit(int status) {
     free(table);
-    free(testTbl);
+    //free(testTbl);
     free(testARMTbl);
     // rp_GenAmp(RP_CH_1, 0);
     // rp_GenAmp(RP_CH_2, 0);
@@ -271,96 +267,6 @@ void _exit(int status) {
 
 /******************************************************************************/
 
-long createTestTable(long nanoInt, long numOfInt){
-
-    printf("alloc test table\n");
-    testTbl = malloc(sizeof(testTable_t)*numOfInt);
-
-    long i;
-    struct timespec testTime;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &testTime);
-    testTime.tv_sec++;
-    for(i=0; i<numOfInt; i++) {
-        testTbl[i].actTime = testTime;
-        addNanoSecToTime(nanoInt, &testTime);
-    }
-
-    // if(readActionTable(fp, lines) != 0) {
-    //     printf("Failed to read action table file.\n");
-    //     return -3;
-    // }
-    // printf("read action table file.\n");
-
-    return 0;
-}
-
-int execTestTimer(long nanoSecInt) {
-
-    printf("creating test table\n");
-    long numOfInt = 100;
-    createTestTable(nanoSecInt, numOfInt);
-    printf("setting time\n");
-    startTime();
-    struct timespec time;
-
-    long i;
-    for(i=0; i<numOfInt; i++){
-        time = testTbl[i].actTime;
-        while(compareTimeToNow(&time)) { /* sleep is overrated... */ }
-        testTbl[i].execTime = getNow();
-        //signalChg9();
-        //printf("TEST\n");
-    }
-
-    //signalOFF9();
-    printf("DONE\n");
-
-
-    if(PRINT_EXEC_LINES) {
-        double difTime = 0.0;
-        double totalDif = 0.0;
-        double maxVal = 0.0;
-        double minVal = 99.9;
-        for(i=0; i<numOfInt; i++) {
-            double actionTime = turnTime(testTbl[i].actTime);
-            double executedTime = turnTime(testTbl[i].execTime);
-            difTime = executedTime - actionTime;
-            totalDif += difTime;
-            if(difTime > maxVal) { maxVal = difTime; }
-            if(difTime < minVal) { minVal = difTime; }
-            printf("line %lu with time %lf (diff of %lf) was executed at time %lf\n", i, actionTime, executedTime, difTime);
-        }
-        printf("The sum/max/min of difference between executedTime and actionTime was %9.9lf / %9.9lf / %9.9lf\n", totalDif, maxVal, minVal);
-    }
-
-    
-    return 0;
-}
-
-/*int execTestTimerOLD(long nanoSecInt) {
-
-    printf("set time\n");
-    startTime();
-    addNanoSecToNext(nanoSecInt);
-
-    while(getSecondsSinceStart() < MAXTESTTIME) {
-
-        while(compareNextToNow()) { }
-        signalChg9();
-        addNanoSecToNext(nanoSecInt);
-    }
-
-    signalOFF9();
-    
-    return 0;
-}*/
-
-
-
-
-
-
-
 void createARMTimerTestTable(long numOfInt){
 
     printf("alloc test table2\n");
@@ -371,7 +277,8 @@ void createARMTimerTestTable(long numOfInt){
 
     long i;
     unsigned long long int timeToSet = BILLION;
-    //unsigned long int inc = nanoInt/NANO_PER_CLICK;
+    double nSec2TckRatio = getNSecPerTick();
+    //unsigned long int inc = nanoInt/nSec2TckRatio;
 
     for(i=0; i<numOfInt; i++) {
         if(i%2) {
@@ -381,8 +288,8 @@ void createARMTimerTestTable(long numOfInt){
             timeToSet += TESTARMNSECOFF;
             testARMTbl[i].val = 1;
         }
-        testARMTbl[i].nextTime = timeToSet/NANO_PER_CLICK;
-        // testARMTbl[i].nextTime = myARMTime + timeToSet/NANO_PER_CLICK;
+        testARMTbl[i].nextTime = (uint64_t)(timeToSet/nSec2TckRatio);
+        // testARMTbl[i].nextTime = myARMTime + timeToSet/nSec2TckRatio;
     }
 }
 
@@ -398,16 +305,24 @@ void execARMTimerTest() {
     // unsigned long int myMSBTime;
     // getARMTimer(&myLSBTime, &myMSBTime);
 
+    volatile uint32_t *toSendAddr;
+    uint32_t toSendValue;
+    
+    // setSignal9(i, &addr, &val);
+
     startARMTimer();
 
     long i;
     for(i=0; i<numOfInt; i++){
         setNextTime(testARMTbl[i].nextTime);
+        setSignal9(testARMTbl[i].val, &toSendAddr, &toSendValue);
 
         while(isARMTimerLessThanNext()) {
 
         }
-        signal9(testARMTbl[i].val);
+
+        *(toSendAddr) = toSendValue;
+        // signal9(testARMTbl[i].val);
         // signalChg9();
         // printf("TEST\n");
     }

@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #define BCM2708_PERI_BASE        0x3F000000
 #define GPIO_BASE                (BCM2708_PERI_BASE + 0x00200000) /* GPIO controller */
 #define GPIO_FUNCTION_SEL_0      0
@@ -26,6 +28,11 @@ void signalOFF9();
 void signalONAll();
 void signalOFFAll();
 void signalChg9();
+
+void setSignal9(int i, volatile uint32_t **addr, uint32_t *val);
+//void setToSend(uint32_t *addr, uint32_t val);
+//inline void useToSend();
+
 
 void prinfSTUFF();
 void printFuncSel();
