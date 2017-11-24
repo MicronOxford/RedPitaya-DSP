@@ -3,9 +3,17 @@
 #define BCM2708_PERI_BASE        0x3F000000
 #define GPIO_BASE                (BCM2708_PERI_BASE + 0x00200000) /* GPIO controller */
 #define GPIO_FUNCTION_SEL_0      0
+// #define GPIO_FUNCTION_SEL_1      1
+// #define GPIO_FUNCTION_SEL_2      2
+// #define GPIO_FUNCTION_SEL_3      3
+// #define GPIO_FUNCTION_SEL_4      4
+// #define GPIO_FUNCTION_SEL_5      5
 #define GPIO_OUTPUT_SET_0        7
+// #define GPIO_OUTPUT_SET_1        8
 #define GPIO_OUTPUT_CLEAR_0      10
-
+// #define GPIO_OUTPUT_CLEAR_1      11
+#define GPIO_LEVEL_0      13
+// #define GPIO_LEVEL_1      14
 
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x) or SET_GPIO_ALT(x,y)
 // #define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
@@ -22,6 +30,8 @@
 
 
 int initGPIO();
+void initPinFunct();
+
 void signal9(int i);
 void signalON9();
 void signalOFF9();
@@ -30,6 +40,7 @@ void signalOFFAll();
 void signalChg9();
 
 void setSignal9(int i, volatile uint32_t **addr, uint32_t *val);
+void setSignal(int pin, int act, volatile uint32_t **addr, uint32_t *val);
 //void setToSend(uint32_t *addr, uint32_t val);
 //inline void useToSend();
 

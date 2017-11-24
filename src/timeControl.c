@@ -23,6 +23,9 @@ double getNSecPerTick() {
     return BILLION/PROC_FREQ;
 }
 
+uint64_t turnNSecToTicks(unsigned long long int nSec) {
+    return (uint64_t) (nSec/getNSecPerTick());
+}
 
 int initARMTimer() {
 
@@ -88,6 +91,10 @@ int isARMTimerLessThanNext() { //return 1 if now < next
     // return lsbARMTimer < lsbNextTime;
 }
 
+void waitForNext() {
+    while(*(ARMTimer) < nextTime) { }
+}
+
 void printARMControl() {
     printf("ARM Control register %08i\n", (uint32_t)*(ARMControl));
 }
@@ -95,7 +102,7 @@ void printARMControl() {
 void printARMTime() {
     uint64_t nowTime = *(ARMTimer);
     double nSec2TckRatio = getNSecPerTick();
-    printf("start :%li  %li\n", startTime, (uint64_t)(startTime*nSec2TckRatio) );
-    printf("now   :%li  %li\n", nowTime, (uint64_t)(nowTime*nSec2TckRatio) );
-    printf("next  :%li  %li\n", nextTime, (uint64_t)(nextTime*nSec2TckRatio) );
+    printf("start :%li  %li\n", (long int)startTime, (long int)(startTime*nSec2TckRatio) );
+    printf("now   :%li  %li\n", (long int)nowTime, (long int)(nowTime*nSec2TckRatio) );
+    printf("next  :%li  %li\n", (long int)nextTime, (long int)(nextTime*nSec2TckRatio) );
 }

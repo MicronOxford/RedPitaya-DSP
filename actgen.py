@@ -65,3 +65,16 @@ for l in range(n):
     #print('{} 13 1'.format(repr(int(t))), file=f)
     #t += dt*3
 '''
+
+
+wait1 = 500
+wait0 = 1500
+n = 200000
+f = open('demotable', 'w')
+t = 0
+for l in range(n):
+    print('{} {} {}'.format( t, 9, 1 ), file=f)
+    t += wait1
+    print('{} {} {}'.format( t, 9, 0 ), file=f)
+    t += wait0
+

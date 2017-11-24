@@ -11,6 +11,7 @@
 
 
 double getNSecPerTick();
+uint64_t turnNSecToTicks(unsigned long long int nSec);
 
 int initARMTimer();
 void startARMTimer();
@@ -18,7 +19,9 @@ void startARMTimer();
 //void updateARMTimer();
 void getARMTimer(uint64_t *utime);
 void setNextTime(uint64_t nTime);
+
 int isARMTimerLessThanNext();
+void waitForNext();
 
 void printARMControl();
 void printARMTime();

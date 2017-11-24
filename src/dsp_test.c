@@ -28,7 +28,16 @@
 #define TESTARMNSECON 2000
 #define TESTARMNSECOFF 3000
 //#define TESTMICROSEC 1
+/*
 
+ToDo
+check jitter, changing the setting of GPIO back to GPIO, but pre setting and activate the setiing after
+
+change table to an actual table (instead of test table)
+saving the current time
+
+waiting states
+*/
 
 char ERRVAL[] = "/n";
 
@@ -75,7 +84,7 @@ int main(int argc, char *argv[]) {
 
     initializeAll();
 
-    long lines = createActionTable(argv[1]);
+    long int lines = createActionTable(argv[1]);
     if(lines < 0) _exit(abs(lines));
 
     // before we set ourselves to more important than the terminal, flush.
@@ -83,14 +92,14 @@ int main(int argc, char *argv[]) {
 
     maxPriority();
 
-    printf("starting exec test.\n");
+    /*printf("starting exec test.\n");
     execARMTimerTest();
-    printf("exec test done.\n");
-    // int execstatus = execActionTable(lines);
-    // if (execstatus < 0) {
-    //     printf("Failed to exec action table (%i).\n", execstatus);
-    //     _exit(5);
-    // }
+    printf("exec test done.\n");*/
+    int execStatus = execActionTable(lines);
+    if (execStatus < 0) {
+        printf("Failed to exec action table (%i).\n", execStatus);
+        _exit(5);
+    }
     printf("exec action table done.\n");
     _exit(0);
 }
@@ -143,24 +152,13 @@ bool getCameraReady() {
     return true;
 }
 
-int frequency_of_primes (int n) {
-    int i,j;
-    int freq=n-1;
-
-    for (i=2; i<=n; ++i) {
-        for (j=i-1;j>1;--j){
-            if (i%j==0) {--freq; break;}
-        }
-    }
-    return freq;
-} //TODO remove this
-
 void executeAction(long line) {
-    int pinP = table[line].pinP;
+    /*int pinP = table[line].pinP;
     int pinN = table[line].pinN;
     uint32_t a1 = table[line].a1;
     uint32_t a2 = table[line].a2;
-    printf("executed row: %lu pinP:%i pinN:%i a1:%i a2:%i\n", line, pinP, pinN, a1, a2);
+    printf("executed row: %lu pinP:%i pinN:%i a1:%i a2:%i\n", line, pinP, pinN, a1, a2);*/
+    printf("executed row: %lu pin:%i action:%i\n", line, actionTable[line].pin, actionTable[line].action);
     // signal9(1);
     // signal9(0);
 }
@@ -194,20 +192,27 @@ int execActionTable(long lines) {
     //XTime_SetTime(0);
     //XTime_GetTime(&now);
 
-    long line;
-
-    printf("!!!REMOVE THIS!!! reducing the action time. !!!REMOVE THIS!!!\n");
-    for (line = 0; line < lines; line++) {
-        table[line].actionTime /= TIMEDIV;
-    }
-
-
-    printf("set time\n");
+    long line = 0;
     startARMTimer();
 
-    for (line = 0; line < lines; line++){
+    for ( ; line < lines; line++){
 
-        setNextTime(table[line].actionTime);
+        setNextTime(actionTable[line].actionTime);
+
+        if(actionTable[line].action == -1) {
+            waitForNext();
+            while(!getCameraReady()) {
+                //IT'S ADVENTURE TIME
+            }
+            startARMTimer();
+        } else {
+            waitForNext();
+            *(actionTable[line].pinAddr) = actionTable[line].valToWrit;
+        }
+
+        
+
+        /*setNextTime(table[line].actionTime);
 
         while(isARMTimerLessThanNext());
 
@@ -219,13 +224,14 @@ int execActionTable(long lines) {
             printf("TIME RESET\n");
         }
 
-        executeAction(line);
+        executeAction(line);*/
         //table[line].executedTime = deltaT;
     }
 
+
     //(((X) < (Y)) ? (X) : (Y))
 
-    if(PRINT_EXEC_LINES) {
+    /*if(PRINT_EXEC_LINES) {
         double difTime = 0.0;
         double totalDif = 0.0;
         double maxVal = 0.0;
@@ -238,7 +244,7 @@ int execActionTable(long lines) {
             printf("line %lu with time %Lf (diff of %lf) was executed at time %lf\n", line, table[line].actionTime, table[line].executedTime, difTime);
         }
         printf("The sum/max/min of difference between executedTime and actionTime was %lf / %lf / %lf\n", totalDif, maxVal, minVal);
-    }
+    }*/
 
     return 0;
 }
@@ -250,8 +256,8 @@ void sig_handler(int signo){
 }
 
 void _exit(int status) {
-    free(table);
-    //free(testTbl);
+    //free(table);
+    free(actionTable);
     free(testARMTbl);
     // rp_GenAmp(RP_CH_1, 0);
     // rp_GenAmp(RP_CH_2, 0);

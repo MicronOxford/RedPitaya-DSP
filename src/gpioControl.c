@@ -9,12 +9,15 @@
 
 //#define PAGE_SIZE (4*1024)
 #define BLOCK_SIZE (4*1024)
+#define MAX_PIN 54
 
 // I/O access
 volatile unsigned *gpio;
 
 // volatile uint32_t *toSendAddr;
 // uint32_t toSendValue;
+
+char pinsFunc[MAX_PIN];
 
 int sign9 = 1; //for signalChg9 function
 
@@ -51,7 +54,7 @@ int initGPIO() {
     //Changing the mode of pin 9 is in the address +0 (the values stored is 32bits)
     //each 3 bits correspond to a pin (the last 2 bits are reseverd)
 
-    //Init output in GPIO pin number 9
+    //Init intput in GPIO pin number 9
     *(gpio+GPIO_FUNCTION_SEL_0) &= ~(7<<(9*3)); // change the bits 27-29 to input mode (000)
 
     // prinfSTUFF();
@@ -62,6 +65,20 @@ int initGPIO() {
     // prinfSTUFF();
 
     return 0;
+}
+
+void initPinFunct() {
+    int i=0;
+    for(i=0; i<MAX_PIN; i++) {
+        if(pinsFunc[i] != 0) {
+            int addrOffset = GPIO_FUNCTION_SEL_0 + (i/10);
+            int valOffset = (i%10)*3;
+            *(gpio+addrOffset) &= ~(7<<valOffset);
+            if(pinsFunc[i] == 'O') {
+                *(gpio+addrOffset) |= (1<<valOffset);
+            }
+        }
+    }
 }
 
 void signal9(int i) { //send signal in pin 9 if i != 0, else clear it
@@ -113,6 +130,30 @@ void setSignal9(int i, volatile uint32_t **addr, uint32_t *val) {
     }
 }
 
+void setSignal(int pin, int act, volatile uint32_t **addr, uint32_t *val) {
+
+    int GPIOoffset = 0;
+    
+    if(act < 0){
+        pinsFunc[pin] = 'I'; //Input
+        GPIOoffset = GPIO_LEVEL_0;
+    } else {
+        pinsFunc[pin] = '0'; //Output
+        if(act != 0) {
+            GPIOoffset = GPIO_OUTPUT_SET_0;
+        } else {
+            GPIOoffset = GPIO_OUTPUT_CLEAR_0;
+        }
+    }
+
+    if(pin > 31) {
+        pin -= 32;
+        GPIOoffset++;
+    }
+    *addr = (gpio+GPIOoffset);
+    *val = (1<<pin);
+}
+
 /*void setToSend(uint32_t *addr, uint32_t val) {
     toSendAddr = addr;
     toSendValue = val;
@@ -141,38 +182,3 @@ void printOutClr() {
     int val = *(gpio+GPIO_OUTPUT_CLEAR_0);
     printf("%x\n", val);
 }
-
-
-
-
-// void test() {
-
-//     int g, rep;
-
-// Switch GPIO 7..11 to output mode
-
-/************************************************************************\
-* You are about to change the GPIO settings of your computer.          *
-* Mess this up and it will stop working!                               *
-* It might be a good idea to 'sync' before running this program        *
-* so at least you still have your code changes written to the SD-card! *
-\************************************************************************/
-
-// Set GPIO pins 7-11 to output
-//     for (g=7; g<=11; g++) {
-//         INP_GPIO(g); // must use INP_GPIO before we can use OUT_GPIO
-//         OUT_GPIO(g);
-//     }
-
-//     for (rep=0; rep<10; rep++) {
-//         for (g=7; g<=11; g++) {
-//             GPIO_SET = 1<<g;
-//             sleep(1);
-//         }
-//         for (g=7; g<=11; g++) {
-//             GPIO_CLR = 1<<g;
-//             sleep(1);
-//         }
-//     }
-
-// }

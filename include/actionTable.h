@@ -1,14 +1,26 @@
 #include <stdint.h>
 
-typedef struct actionTable {
+/*typedef struct actionTable {
     long double actionTime;
     int pinP;
     int pinN;
     uint32_t a1;
     uint32_t a2;
     double executedTime;
-} actionTable_t;
+} actionTable_t;*/
 
-actionTable_t *table;
+typedef struct { // struct ACTION LINE
+    uint64_t actionTime; // action time (in clock ticks)
+    int pin; // pin number
+    int action; // action (1: set pin on; 0: clear pin off; -1: wait for pin)
+    volatile uint32_t * pinAddr; // pin's virtual address to write the action (given by gpioControl)
+    uint32_t valToWrit; // value to write in order to execute the action on the pin (given by gpioControl)
+    unsigned long long int executedTime; // ~time when the action was executed (CURRENTLY NOT IMPLEMENT)
+} actionLine;
 
+//actionTable_t *table;
+actionLine *actionTable; //
+long int numberOfLines;
+
+//long createActionTable(char *path);
 long createActionTable(char *path);
