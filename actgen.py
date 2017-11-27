@@ -78,3 +78,6 @@ for l in range(n):
     print('{} {} {}'.format( t, 9, 0 ), file=f)
     t += wait0
 
+# print('{} {} {}'.format( t, 9, 1 ), file=f)
+print('{} {} {}'.format( t, 11, -1 ), file=f)
+# print('{} {} {}'.format( 2000000000, 9, 0 ), file=f)

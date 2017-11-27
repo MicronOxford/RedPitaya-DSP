@@ -27,6 +27,7 @@
 #define TESTARMNUMBER 100000
 #define TESTARMNSECON 2000
 #define TESTARMNSECOFF 3000
+#define INFINITELOOP 1
 //#define TESTMICROSEC 1
 /*
 
@@ -96,6 +97,9 @@ int main(int argc, char *argv[]) {
     execARMTimerTest();
     printf("exec test done.\n");*/
     int execStatus = execActionTable(lines);
+    if(INFINITELOOP) {
+        execStatus = execActionTable(lines);
+    }
     if (execStatus < 0) {
         printf("Failed to exec action table (%i).\n", execStatus);
         _exit(5);
@@ -201,7 +205,7 @@ int execActionTable(long lines) {
 
         if(actionTable[line].action == -1) {
             waitForNext();
-            while(!getCameraReady()) {
+            while(!(*(actionTable[line].pinAddr)& actionTable[line].valToWrit)) {
                 //IT'S ADVENTURE TIME
             }
             startARMTimer();
