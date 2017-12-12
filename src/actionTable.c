@@ -228,10 +228,10 @@ int readActionLine(char *line, long lineNum) {
     actionTable[lineNum].executedTime = 0;
 
     if(PRINT_READ_LINES) {
-        printf("row:%lu time:%llu pin:%i (@0x%08x) action:%i (0x%08x)",
+        printf("row:%lu time:%llu pin:%i (@0x%p) action:%i (0x%08x)",
             lineNum, // row
             (unsigned long long int) actionTable[lineNum].actionTime, // time
-            actionTable[lineNum].pin, (unsigned int)actionTable[lineNum].pinAddr, // pinNum & pin address
+            actionTable[lineNum].pin, actionTable[lineNum].pinAddr, // pinNum & pin address
             actionTable[lineNum].action, (unsigned int)actionTable[lineNum].valToWrit); // action value & value to write in the pin address (pinAddr)
     }
     return 0;

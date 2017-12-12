@@ -67,10 +67,10 @@ for l in range(n):
 '''
 
 
-wait1 = 500
-wait0 = 1500
-n = 200000
-f = open('demotable', 'w')
+wait1 = 200
+wait0 = 300
+n = 2000000
+f = open('demotable200300', 'w')
 t = 0
 for l in range(n):
     print('{} {} {}'.format( t, 9, 1 ), file=f)
@@ -79,5 +79,17 @@ for l in range(n):
     t += wait0
 
 # print('{} {} {}'.format( t, 9, 1 ), file=f)
-print('{} {} {}'.format( t, 11, -1 ), file=f)
+# print('{} {} {}'.format( t, 11, -1 ), file=f)
 # print('{} {} {}'.format( 2000000000, 9, 0 ), file=f)
+
+
+wait = 500
+n = 2000000
+f = open('demotableWait500', 'w')
+t = 500
+for l in range(n):
+    print('{} {} {}'.format( t, 9, 1 ), file=f)
+    t += wait
+    print('{} {} {}'.format( t, 9, 0 ), file=f)
+    print('{} {} {}'.format( t, 11, -1 ), file=f)
+    t = 500
