@@ -114,7 +114,7 @@ void startARMTimer() {
 inline void updateARMTimer() {
     do {
         currTime = *(ARMTimer);
-    } while (*(scanTime)^0xFFFFFFFF);
+    } while (*(scanTime) == 0xFFFFFFFF);
 }
 
 /*void getARMTimer(uint64_t *utime) {
