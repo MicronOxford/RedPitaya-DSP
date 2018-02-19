@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 
 /*typedef struct actionTable {
     long double actionTime;
@@ -9,7 +10,7 @@
     double executedTime;
 } actionTable_t;*/
 
-typedef struct { // struct ACTION LINE
+/*typedef struct { // struct ACTION LINE
     uint64_t actionTime; // action time (in clock ticks)
     int pin; // pin number
     int action; // action (1: set pin on; 0: clear pin off; -1: wait for pin)
@@ -23,4 +24,19 @@ actionLine *actionTable; //
 long int numberOfLines;
 
 //long createActionTable(char *path);
-long createActionTable(char *path);
+long createActionTable(char *path);*/
+
+
+
+typedef struct actionTable {
+    unsigned long long clocks;
+    int pinP;
+    int pinN;
+    uint32_t a1;
+    uint32_t a2;
+} actionLine;
+
+actionLine *actionTable;
+
+int readActionTable(FILE *fp, long lines);
+int readActionTableLine(char *line, long lineno);

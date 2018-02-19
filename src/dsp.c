@@ -8,27 +8,19 @@
 #include "timer.h"
 #include "rpouts.h"
 #include "fpga_awg.h"
+#include "actionTable.h"
 
-#define MAXLINELEN 50
-#define MAXHANDLERLEN 5
-#define DELIM " "
-#define BILLION  1000000000L;
+// #define MAXLINELEN 50
+// #define MAXHANDLERLEN 5
+// #define DELIM " "
+// #define BILLION  1000000000L;
 
 char ERRVAL[] = "/n";
 
 uint32_t INT_MAX = UINT32_MAX;
 
-typedef struct actionTable {
-	unsigned long long clocks;
-	int pinP;
-	int pinN;
-	uint32_t a1;
-	uint32_t a2;
-} actionTable_t;
 
-
-int readActionTable(FILE *fp, long lines);
-int readActionTableLine(char *line, long lineno);
+void initializeAll();
 int execActionTable(long lines);
 void sig_handler(int signo);
 void _exit(int status);
@@ -39,32 +31,13 @@ void spinwait(int loops) {
 		t += 1;
 }
 
-actionTable_t *table = NULL;
-
 int main(int argc, char *argv[])
 {
-	printf("hello, w\n");
+	printf("Initializing!\n");
 
-	if (initTimer() == 1){
-		printf("init timer failed\n");
-		_exit(2);
-	};
+	initializeAll();
 
-	if(initOuts() < 0){
-		fprintf(stderr, "Rp api init failed!\n");
-		_exit(2);
-	}
-
-	if(fpga_awg_init() != 0){
-		fprintf(stderr, "FPGA init failed!\n");
-		_exit(2);
-	}
-
-	if (signal(SIGINT, sig_handler) == SIG_ERR){
-  	printf("Signal handler failed\n");
-  }
-
-	printf("hello, world!\n");
+	printf("Hello world!\n");
 
 	if (argc != 2) {
 		printf("USAGE: dsp ACTIONTABLEFILE\n");
@@ -87,7 +60,7 @@ int main(int argc, char *argv[])
 	rewind(fp);
 
 	printf("alloc action table\n");
-	table = malloc(sizeof(actionTable_t)*lines);
+	actionTable = malloc(sizeof(actionLine)*lines);
 
 	if (readActionTable(fp, lines) != 0){
 		printf("Failed to read action table file.\n");
@@ -118,72 +91,29 @@ int main(int argc, char *argv[])
 
 /******************************************************************************/
 
-int readActionTable(FILE *fp, long lines) {
-	int bytes_read = 0;
-	long lineno = 0;
-	size_t linelen = (size_t)MAXLINELEN;
-	char *linestr;
-	linestr = (char *) malloc(sizeof(char)*(linelen+1));
 
-	for (lineno = 0; lineno < lines; lineno++){
-		bytes_read = getline(&linestr, &linelen, fp);
-		if (bytes_read <= 0){
-			printf("read %lu lines of action table, but was empty\n", lineno);
-			free(linestr);
-			return -1;
-		}
-		if (readActionTableLine(linestr, lineno) < 0){
-			printf("readActionTableLine failed on %lu\n", lineno);
-			free(linestr);
-			return -1;
-		}
-		//printf("malloc for line %i, addr %p\n", lines_read, nextRow);
-		//printf("done  \n");
-	}
-	free(linestr);
-	return 0;
-}
+void initializeAll() {
+	actionTable = NULL;
 
-int readActionTableLine(char *line, long lineno){
+	if (initTimer() == 1){
+		printf("init timer failed\n");
+		_exit(2);
+	};
 
-	char *nstime_s;
-	char *pinP_s;
-	char *pinN_s;
-	char *a1_s;
-	char *a2_s;
+	if(initOuts() < 0){
+		fprintf(stderr, "Rp api init failed!\n");
+		_exit(2);
+	}
 
-	nstime_s = strtok(line, DELIM);  // REMINDER: first strtok call needs the str.
-	if (nstime_s == NULL){
-		printf("action nstime is NULL for '%s'\n", line);
-		return -1;
+	if(fpga_awg_init() != 0){
+		fprintf(stderr, "FPGA init failed!\n");
+		_exit(2);
 	}
-	pinP_s = strtok(NULL, DELIM);
-	if (pinP_s == NULL){
-		printf("pinP is NULL for %s\n", line);
-		return -1;
-	}
-	pinN_s = strtok(NULL, DELIM);
-	if (pinN_s == NULL){
-		printf("pinN is NULL for %s\n", line);
-		return -1;
-	}
-	a1_s = strtok(NULL, DELIM);
-	if (a1_s == NULL){
-		printf("a1_s is NULL for %s", line);
-		return -1;
-	}
-	a2_s = strtok(NULL, DELIM);
-	if (a2_s == NULL){
-		printf("a2_s is NULL for %s", line);
-		return -1;
-	}
-	table[lineno].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / 1000000000L;
-	table[lineno].pinP = strtol(pinP_s, NULL, 10);
-	table[lineno].pinN = strtol(pinN_s, NULL, 10);
-	table[lineno].a1 = strtol(a1_s, NULL, 10);
-	table[lineno].a2 = strtol(a2_s, NULL, 10);
-	printf("row: %lu time:%llu pinP:%i pinN:%i a1:%i\n", lineno, table[lineno].clocks, table[lineno].pinP, table[lineno].pinN, table[lineno].a1);
-	return 0;
+
+	if (signal(SIGINT, sig_handler) == SIG_ERR){
+  	printf("Signal handler failed\n");
+  }
+
 }
 
 /* need to add error handling on the clock */
@@ -206,11 +136,11 @@ int execActionTable(long lines) {
 	XTime_SetTime(0);
 	XTime_GetTime(&now);
 	for (line = 0; line < lines; line++){
-		while (now  <= table[line].clocks) XTime_GetTime(&now);
-		out_setpins_P(table[line].pinP);
-		out_setpins_N(table[line].pinN);
-		fpga_awg_write_val_a(table[line].a1);
-		fpga_awg_write_val_b(table[line].a2);
+		while (now  <= actionTable[line].clocks) XTime_GetTime(&now);
+		out_setpins_P(actionTable[line].pinP);
+		out_setpins_N(actionTable[line].pinN);
+		fpga_awg_write_val_a(actionTable[line].a1);
+		fpga_awg_write_val_b(actionTable[line].a2);
 	}
 	return 0;
 }
@@ -223,7 +153,7 @@ void sig_handler(int signo){
 }
 
 void _exit(int status) {
-	free(table);
+	free(actionTable);
 	// rp_GenAmp(RP_CH_1, 0);
 	// rp_GenAmp(RP_CH_2, 0);
 	// rp_ApinReset();

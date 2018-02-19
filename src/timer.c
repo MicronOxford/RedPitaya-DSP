@@ -27,7 +27,7 @@ int initTimer(){
 
   TIMER_MMAP = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, TIMER_FD, GLOBAL_TMR_BASEADDR);
   if (TIMER_MMAP == MAP_FAILED) {
-      fprintf(stderr, "mmap64(0x%x@0x%x) failed (%d)\n",
+      fprintf(stderr, "mmap64(0x%lx@0x%x) failed (%d)\n",
               PAGE_SIZE, (uint32_t)(XPAR_GLOBAL_TMR_BASEADDR), errno);
       return 1;
   }
