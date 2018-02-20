@@ -26,7 +26,12 @@ int initOuts(){
   }
 
   // map the whole of the RP FPGA space
-  OUTS_MMAP = mmap(NULL, PAGE_SIZE*2048, PROT_READ | PROT_WRITE, MAP_SHARED, OUTS_FD, RP_BASE_ADDR);
+  OUTS_MMAP = mmap(NULL,
+    PAGE_SIZE*2048,
+    PROT_READ | PROT_WRITE,
+    MAP_SHARED,
+    OUTS_FD,
+    RP_BASE_ADDR);
   if (OUTS_MMAP == MAP_FAILED) {
       fprintf(stderr, "mmap64(0x%lx@0x%x) failed (%d)\n",
               PAGE_SIZE, (uint32_t)(RP_BASE_ADDR), errno);

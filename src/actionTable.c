@@ -241,11 +241,34 @@ int readActionLine(char *line, long lineNum) {
 
 
 
+int readActionTableLine(char *line, long lineno);
 
 
 
+long readActionTable(char *file) {
 
-int readActionTable(FILE *fp, long lines) {
+
+    FILE *fp;
+    fp = fopen(file, "r");
+    if (fp == NULL) {
+        printf("Could not open file %s\n", file);
+        return -2;
+    }
+
+
+
+    long lines = 0;
+    int ch;
+    while (EOF != (ch=getc(fp))) {
+        if (ch=='\n') ++lines;
+    }
+    printf("ActionTable is %lu lines long\n", lines);
+    rewind(fp);
+
+    printf("memory allocation for ActionTable...");
+    actionTable = malloc(sizeof(actionLine)*lines);
+    printf(" Completed\n");
+
     int bytes_read = 0;
     long lineno = 0;
     size_t linelen = (size_t)MAXLINELEN;
@@ -268,7 +291,9 @@ int readActionTable(FILE *fp, long lines) {
         //printf("done  \n");
     }
     free(linestr);
-    return 0;
+
+    printf("ActionTable created successfully.\n");
+    return lines;
 }
 
 int readActionTableLine(char *line, long lineno){

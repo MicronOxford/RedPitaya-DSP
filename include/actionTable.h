@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <stdio.h>
+// #include <stdio.h>
 
 /*typedef struct actionTable {
     long double actionTime;
@@ -38,5 +38,5 @@ typedef struct actionTable {
 
 actionLine *actionTable;
 
-int readActionTable(FILE *fp, long lines);
-int readActionTableLine(char *line, long lineno);
+long readActionTable(char *file);
+// int readActionTableLine(char *line, long lineno);

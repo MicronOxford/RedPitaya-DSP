@@ -21,70 +21,46 @@ uint32_t INT_MAX = UINT32_MAX;
 
 
 void initializeAll();
+void setMaxPriority();
 int execActionTable(long lines);
 void sig_handler(int signo);
 void _exit(int status);
 
-void spinwait(int loops) {
+/*void spinwait(int loops) {
 	int t = 0;
 	while (t != loops)
 		t += 1;
-}
+}*/
 
 int main(int argc, char *argv[])
 {
-	printf("Initializing!\n");
-
-	initializeAll();
-
 	printf("Hello world!\n");
 
 	if (argc != 2) {
-		printf("USAGE: dsp ACTIONTABLEFILE\n");
+        printf("num of args used was %u\n", argc);
+		printf("USAGE: dsp \"action-table-file\"\n");
 		_exit(1);
 	}
 
-	FILE *fp;
-	fp = fopen(argv[1], "r");
-	if (fp == NULL) {
-		printf("Could not open file %s\n", argv[1]);
-		_exit(2);
-	}
+	initializeAll();
 
-	long lines = 0;
-	int ch;
-	while (EOF != (ch=getc(fp)))
-	    if (ch=='\n')
-	        ++lines;
-	printf("actiontable is %lu lines long\n", lines);
-	rewind(fp);
-
-	printf("alloc action table\n");
-	actionTable = malloc(sizeof(actionLine)*lines);
-
-	if (readActionTable(fp, lines) != 0){
+	long lines = readActionTable(argv[1]);
+	if(lines < 0) {
 		printf("Failed to read action table file.\n");
-		_exit(3);
+		_exit(abs(lines));
 	}
-	printf("read action table file.\n");
 
-	// before we set ourselves to more important than the terminal,
-	// flush.
+	// before we set ourselves to more important than the terminal, flush.
 	fflush(stdout);
 
-	struct sched_param params;
-	params.sched_priority = 99;
-	if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
-		printf("Failed to set priority.\n");
-		_exit(4);
-	}
+	setMaxPriority();
 
 	int execstatus = execActionTable(lines);
 	if (execstatus < 0) {
-		printf("Failed to exec action table (%i).\n", execstatus);
+		printf("Failed to execute ActionTable (%i).\n", execstatus);
 		_exit(5);
 	}
-	printf("exec action table done.\n");
+	printf("ActionTable executed.\n");
 
 	_exit(0);
 }
@@ -93,12 +69,14 @@ int main(int argc, char *argv[])
 
 
 void initializeAll() {
+	printf("Initializing!\n");
+
 	actionTable = NULL;
 
 	if (initTimer() == 1){
 		printf("init timer failed\n");
 		_exit(2);
-	};
+	}
 
 	if(initOuts() < 0){
 		fprintf(stderr, "Rp api init failed!\n");
@@ -111,9 +89,19 @@ void initializeAll() {
 	}
 
 	if (signal(SIGINT, sig_handler) == SIG_ERR){
-  	printf("Signal handler failed\n");
-  }
+  		printf("Signal handler failed\n");
+  	}
 
+}
+
+
+void setMaxPriority() {
+	struct sched_param params;
+	params.sched_priority = 99;
+	if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
+		printf("Failed to set priority.\n");
+		_exit(4);
+	}
 }
 
 /* need to add error handling on the clock */
