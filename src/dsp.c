@@ -106,16 +106,16 @@ void setMaxPriority() {
 
 /* need to add error handling on the clock */
 int execActionTable(long lines) {
-	printf("exec action table\n");
+	printf("executing ActionTable\n");
 	// float a_volts = 0;
-  // rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
+	// rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
 	// rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
 	// rp_GenAmp(RP_CH_1, a_volts);
 	// rp_GenAmp(RP_CH_2, a_volts);
 	// rp_GenOutEnable(RP_CH_1);
 	// rp_GenOutEnable(RP_CH_2);
 
-	printf("faffing with actiontables\n");
+/*	printf("faffing with actiontables\n");
 	XTime now;
 
 	printf("set time\n");
@@ -129,6 +129,40 @@ int execActionTable(long lines) {
 		out_setpins_N(actionTable[line].pinN);
 		fpga_awg_write_val_a(actionTable[line].a1);
 		fpga_awg_write_val_b(actionTable[line].a2);
+	}*/
+	int analogVal = 0;
+	char letter[10];
+	fpga_awg_write_val_a(analogVal);
+	while(1) {
+		printf("current analogVal %d\n", analogVal);
+		scanf("%s", letter);
+		if(letter[0] == 'q'){
+			analogVal += 1;
+			continue;
+		}
+		if(letter[0] == 'w'){
+			analogVal -= 1;
+			continue;
+		}
+		if(letter[0] == 'a'){
+			analogVal += 10;
+			continue;
+		}
+		if(letter[0] == 's'){
+			analogVal -= 10;
+			continue;
+		}
+		if(letter[0] == 'z'){
+			analogVal += 100;
+			continue;
+		}
+		if(letter[0] == 'x'){
+			analogVal -= 100;
+			continue;
+		}
+		if(letter[0] == 'm'){
+			break;
+		}
 	}
 	return 0;
 }

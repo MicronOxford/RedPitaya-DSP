@@ -136,8 +136,12 @@ int fpga_awg_init(void)
     page_off  = AWG_BASE_ADDR - page_addr;
 
     /* Map FPGA memory space to page_ptr. */
-    page_ptr = mmap(NULL, AWG_BASE_SIZE, PROT_READ | PROT_WRITE,
-                          MAP_SHARED, g_awg_fd, page_addr);
+    page_ptr = mmap(NULL,
+        AWG_BASE_SIZE,
+        PROT_READ | PROT_WRITE,
+        MAP_SHARED,
+        g_awg_fd,
+        page_addr);
     if((void *)page_ptr == MAP_FAILED) {
         fprintf(stderr, "mmap() failed: %s\n", strerror(errno));
          __awg_cleanup_mem();
@@ -207,11 +211,11 @@ int fpga_awg_exit(void)
 void fpga_awg_write_val_a(uint32_t val){
   //printf("state 0x%08x scale 0x%08x", g_awg_reg->state_machine_conf, g_awg_reg->cha_scale_off);
   g_awg_cha_mem[0] = val;
-  g_awg_cha_mem[1] = val;
+  //g_awg_cha_mem[1] = val;
 }
 
 void fpga_awg_write_val_b(uint32_t val){
   //printf("state 0x%08x scale 0x%08x", g_awg_reg->state_machine_conf, g_awg_reg->cha_scale_off);
   g_awg_chb_mem[0] = val;
-  g_awg_chb_mem[1] = val;
+  //g_awg_chb_mem[1] = val;
 }

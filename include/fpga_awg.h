@@ -33,7 +33,7 @@
  * This structure is direct image of physical FPGA memory. When accessing it all
  * reads/writes are performed directly from/to FPGA AWG.
  */
-typedef struct awg_reg_t {
+typedef struct awg_reg_t { // between [7:0] should corresponde to A, NOT SURE
     /** @brief Offset 0x00 - State machine configuration
      *
      * State machine configuration register (offset 0x00):
