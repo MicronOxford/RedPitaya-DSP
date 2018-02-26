@@ -71,34 +71,61 @@ void turnLEDs(int leds) {
 /*
 pin [0-7]   =   pinP [0-7]
 pin [8-15]  =   pinN [0-7]
-pin [16-17] =   analogue output [1-2]
+pin -1 & -2 =   analogue output 1 & 2
 */
 int setPinVal(int pin, int value, volatile uint32_t ** addr, uint32_t *val) {
-  if(pin < 0 || pin >17) {
-    //print error
-    return -1;
-  }
-  if(pin > 15) {
-    // analogue output - NOT IMPLEMENTED YET
-    return 1;
-  }
-  if(pin > 7) {
-    pin -= 8;
-    *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT);
-    if(value) {
-      pinsN |= (1<<pin); 
-    } else {
-      pinsN &= !(1<<pin);
+  if(pin < 0) {
+// analogue output - NOT IMPLEMENTED YET
+    abs(pin);
+    if(pin > 2) {
+      printf("Analogue pin number was bigger than 2 (%d)\n", pin);
+      return -1;
     }
-    *val = pinsN;
+    //TODO Implement analogue output
   } else {
-    *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT);
-    if(value) {
-      pinsP |= (1<<pin); 
-    } else {
-      pinsP &= !(1<<pin);
+// digital pin out/in put
+    if(pin > 17) {
+      printf("Digital pin number was bigger than 17 (%d)\n", pin);
+      return -1;
     }
-    *val = pinsP;
+
+    /*if(*value < 0) {
+      // digital input
+      // value -1 = wait for signal to be 1
+      // value -2 = wait for signal to be 0
+      // value -3 = wait for edge
+
+      if(*value < -3) {
+        printf("WARNING! Value was %i - expected to be between -3 to 1", *value)
+      }
+
+    } else {
+
+    }*/
+    
+
+    volatile uint32_t *pinStates;
+    if(pin > 7) {
+      pin -= 8;
+      *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT);
+      pinStates = &pinsN;
+    } else {
+      *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT);
+      pinStates = &pinsP;
+    }
+
+    /*if(*value > 1){
+      printf("WARNING! value expected to be 0 or 1")
+      //print warning
+      *value = 1;
+    }*/
+
+    if(value) {
+      *pinStates |= (1<<pin); 
+    } else {
+      *pinStates &= !(1<<pin);
+    }
+    *val = *pinStates;
   }
   return 0;
 }

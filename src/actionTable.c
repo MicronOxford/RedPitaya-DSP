@@ -9,6 +9,7 @@
 // #include "timeControl.h"
 // #include "gpioControl.h"
 #include "timer.h"
+#include "rpouts.h"
 
 
 #define MAXLINELEN 50
@@ -299,41 +300,63 @@ long readActionTable(char *file) {
 int readActionTableLine(char *line, long lineno){
 
     char *nstime_s;
-    char *pinP_s;
-    char *pinN_s;
-    char *a1_s;
-    char *a2_s;
+    // char *pinP_s;
+    // char *pinN_s;
+    char *pin_s;
+    // char *a1_s;
+    // char *a2_s;
+    char *value_s;
 
     nstime_s = strtok(line, DELIM);  // REMINDER: first strtok call needs the str.
     if (nstime_s == NULL){
         printf("action nstime is NULL for '%s'\n", line);
         return -1;
     }
-    pinP_s = strtok(NULL, DELIM);
-    if (pinP_s == NULL){
-        printf("pinP is NULL for %s\n", line);
-        return -1;
-    }
-    pinN_s = strtok(NULL, DELIM);
-    if (pinN_s == NULL){
+    // pinP_s = strtok(NULL, DELIM);
+    // if (pinP_s == NULL){
+    //     printf("pinP is NULL for %s\n", line);
+    //     return -1;
+    // }
+    // pinN_s = strtok(NULL, DELIM);
+    // if (pinN_s == NULL){
+    //     printf("pinN is NULL for %s\n", line);
+    //     return -1;
+    // }
+    pin_s = strtok(NULL, DELIM);
+    if (pin_s == NULL){
         printf("pinN is NULL for %s\n", line);
         return -1;
     }
-    a1_s = strtok(NULL, DELIM);
-    if (a1_s == NULL){
-        printf("a1_s is NULL for %s", line);
+    // a1_s = strtok(NULL, DELIM);
+    // if (a1_s == NULL){
+    //     printf("a1_s is NULL for %s", line);
+    //     return -1;
+    // }
+    // a2_s = strtok(NULL, DELIM);
+    // if (a2_s == NULL){
+    //     printf("a2_s is NULL for %s", line);
+    //     return -1;
+    // }
+    value_s = strtok(NULL, DELIM);
+    if (value_s == NULL){
+        printf("pinN is NULL for %s\n", line);
         return -1;
     }
-    a2_s = strtok(NULL, DELIM);
-    if (a2_s == NULL){
-        printf("a2_s is NULL for %s", line);
-        return -1;
-    }
-    actionTable[lineno].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / 1000000000L;
-    actionTable[lineno].pinP = strtol(pinP_s, NULL, 10);
-    actionTable[lineno].pinN = strtol(pinN_s, NULL, 10);
-    actionTable[lineno].a1 = strtol(a1_s, NULL, 10);
-    actionTable[lineno].a2 = strtol(a2_s, NULL, 10);
-    printf("row: %lu time:%llu pinP:%i pinN:%i a1:%i\n", lineno, actionTable[lineno].clocks, actionTable[lineno].pinP, actionTable[lineno].pinN, actionTable[lineno].a1);
-    return 0;
+    //actionTable[lineno].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / 1000000000L;
+    actionTable[lineno].nsec = strtoull(nstime_s, NULL, 10);
+    // actionTable[lineno].pinP = strtol(pinP_s, NULL, 10);
+    // actionTable[lineno].pinN = strtol(pinN_s, NULL, 10);
+    actionTable[lineno].pin = atoi(pin_s);
+    // actionTable[lineno].a1 = strtol(a1_s, NULL, 10);
+    // actionTable[lineno].a2 = strtol(a2_s, NULL, 10);
+    actionTable[lineno].value = strtol(value_s, NULL, 10);
+    // printf("row: %lu time:%llu pinP:%i pinN:%i a1:%i\n", lineno, actionTable[lineno].clocks, actionTable[lineno].pinP, actionTable[lineno].pinN, actionTable[lineno].a1);
+    printf("row: %lu time:%llu pin:%i value:%i\n",
+        lineno,
+        (unsigned long long int) actionTable[lineno].nsec,
+        actionTable[lineno].pin,
+        actionTable[lineno].value);
+
+    return setPinVal(actionTable[lineno].pin, actionTable[lineno].value,
+        &actionTable[lineno].pinAddr, &actionTable[lineno].valToWrit);
 }
