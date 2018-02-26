@@ -20,3 +20,11 @@ typedef uint64_t XTime;
 int initTimer();
 void XTime_SetTime(XTime Xtime_Global);
 void XTime_GetTime(XTime *Xtime_Global);
+
+/*******************************************************************************/
+
+uint64_t startTime;
+uint64_t currentTime;
+
+void updateStartTime();
+void updateCurrentTime();

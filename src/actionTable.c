@@ -358,5 +358,5 @@ int readActionTableLine(char *line, long lineno){
         actionTable[lineno].value);
 
     return setPinVal(actionTable[lineno].pin, actionTable[lineno].value,
-        &actionTable[lineno].pinAddr, &actionTable[lineno].valToWrit);
+        &actionTable[lineno].pinAddr, &actionTable[lineno].valToWrite);
 }

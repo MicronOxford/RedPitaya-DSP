@@ -107,6 +107,7 @@ void setMaxPriority() {
 /* need to add error handling on the clock */
 int execActionTable(long lines) {
 	printf("executing ActionTable\n");
+	long line;
 	// float a_volts = 0;
 	// rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
 	// rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
@@ -115,22 +116,24 @@ int execActionTable(long lines) {
 	// rp_GenOutEnable(RP_CH_1);
 	// rp_GenOutEnable(RP_CH_2);
 
-/*	printf("faffing with actiontables\n");
-	XTime now;
+	// printf("faffing with actiontables\n");
+	// XTime now;
 
 	printf("set time\n");
+	uint64_t nextTime;
+	updateCurrentTime();
+	updateStartTime(currentTime);
+	// XTime_SetTime(0);
+	// XTime_GetTime(&now);
 
-	long line;
-	XTime_SetTime(0);
-	XTime_GetTime(&now);
 	for (line = 0; line < lines; line++){
-		while (now  <= actionTable[line].clocks) XTime_GetTime(&now);
-		out_setpins_P(actionTable[line].pinP);
-		out_setpins_N(actionTable[line].pinN);
-		fpga_awg_write_val_a(actionTable[line].a1);
-		fpga_awg_write_val_b(actionTable[line].a2);
-	}*/
-	int analogVal = 0;
+		nextTime = startTime + actionTable[line].nsec;
+
+		while (currentTime  < nextTime) updateCurrentTime();
+
+		*(actionTable[line].pinAddr) = actionTable[line].valToWrite;
+	}
+	/*int analogVal = 0;
 	char letter[10];
 	fpga_awg_write_val_a(analogVal);
 	while(1) {
@@ -163,7 +166,7 @@ int execActionTable(long lines) {
 		if(letter[0] == 'm'){
 			break;
 		}
-	}
+	}*/
 	return 0;
 }
 

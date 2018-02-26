@@ -14,9 +14,17 @@
 #define PAGE_SIZE ((size_t)getpagesize())
 #define PAGE_MASK ((uint64_t)(long)~(PAGE_SIZE - 1))
 
-
 int TIMER_FD;
 volatile uint8_t *TIMER_MMAP;
+
+/*******************************************************************************/
+
+volatile uint64_t *clock64;
+volatile uint32_t *clock32;
+
+/*******************************************************************************/
+
+
 
 int initTimer(){
   TIMER_FD = open("/dev/mem", O_RDWR|O_SYNC);
@@ -36,6 +44,13 @@ int initTimer(){
               PAGE_SIZE, (uint32_t)(XPAR_GLOBAL_TMR_BASEADDR), errno);
       return 1;
   }
+
+  startTime = 0;
+  currentTime = 0;
+
+  clock64 = &currentTime;
+  clock32 = (volatile uint32_t *)&currentTime;
+
   return 0;
 }
 
@@ -83,4 +98,21 @@ void XTime_GetTime(XTime *Xtime_Global)
 	} while(*(volatile uint32_t *)(TIMER_MMAP+GTIMER_COUNTER_UPPER_OFFSET) != high);
 
 	*Xtime_Global = (((XTime) high) << 32U) | (XTime) low;
+}
+
+
+
+
+/*******************************************************************************/
+
+
+void updateStartTime(uint64_t time) {
+    startTime = time;
+}
+
+void updateCurrentTime() {
+    do {
+        clock32[1] = *(volatile uint32_t *)(TIMER_MMAP+GTIMER_COUNTER_UPPER_OFFSET);
+        clock32[0] = *(volatile uint32_t *)(TIMER_MMAP+GTIMER_COUNTER_LOWER_OFFSET);
+    } while(*(volatile uint32_t *)(TIMER_MMAP+GTIMER_COUNTER_UPPER_OFFSET) != clock32[1]);
 }

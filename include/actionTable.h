@@ -38,7 +38,7 @@ typedef struct actionTable {
 //    uint32_t a2;
     uint32_t value;
     volatile uint32_t * pinAddr;
-    uint32_t valToWrit;
+    uint32_t valToWrite;
 } actionLine;
 
 actionLine *actionTable;
