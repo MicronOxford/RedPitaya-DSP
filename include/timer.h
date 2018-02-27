@@ -28,3 +28,4 @@ uint64_t currentTime;
 
 void updateStartTime();
 void updateCurrentTime();
+uint64_t turnNSecToTicks(uint64_t nsec);

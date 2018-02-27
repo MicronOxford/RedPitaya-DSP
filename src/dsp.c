@@ -22,7 +22,7 @@ uint32_t INT_MAX = UINT32_MAX;
 
 void initializeAll();
 void setMaxPriority();
-int execActionTable(long lines);
+int execActionTable(const long lines);
 void sig_handler(int signo);
 void _exit(int status);
 
@@ -105,7 +105,7 @@ void setMaxPriority() {
 }
 
 /* need to add error handling on the clock */
-int execActionTable(long lines) {
+int execActionTable(const long lines) {
 	printf("executing ActionTable\n");
 	long line;
 	// float a_volts = 0;
@@ -120,53 +120,21 @@ int execActionTable(long lines) {
 	// XTime now;
 
 	printf("set time\n");
-	uint64_t nextTime;
+	uint64_t nextTime = 0;
 	updateCurrentTime();
 	updateStartTime(currentTime);
 	// XTime_SetTime(0);
 	// XTime_GetTime(&now);
 
 	for (line = 0; line < lines; line++){
-		nextTime = startTime + actionTable[line].nsec;
+		actionLine actLine = actionTable[line];
+		nextTime = startTime + actLine.clocks;
 
 		while (currentTime  < nextTime) updateCurrentTime();
 
-		*(actionTable[line].pinAddr) = actionTable[line].valToWrite;
+		*(actLine.pinAddr) = actLine.valToWrite;
 	}
-	/*int analogVal = 0;
-	char letter[10];
-	fpga_awg_write_val_a(analogVal);
-	while(1) {
-		printf("current analogVal %d\n", analogVal);
-		scanf("%s", letter);
-		if(letter[0] == 'q'){
-			analogVal += 1;
-			continue;
-		}
-		if(letter[0] == 'w'){
-			analogVal -= 1;
-			continue;
-		}
-		if(letter[0] == 'a'){
-			analogVal += 10;
-			continue;
-		}
-		if(letter[0] == 's'){
-			analogVal -= 10;
-			continue;
-		}
-		if(letter[0] == 'z'){
-			analogVal += 100;
-			continue;
-		}
-		if(letter[0] == 'x'){
-			analogVal -= 100;
-			continue;
-		}
-		if(letter[0] == 'm'){
-			break;
-		}
-	}*/
+	
 	return 0;
 }
 

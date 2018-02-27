@@ -116,3 +116,7 @@ void updateCurrentTime() {
         clock32[0] = *(volatile uint32_t *)(TIMER_MMAP+GTIMER_COUNTER_LOWER_OFFSET);
     } while(*(volatile uint32_t *)(TIMER_MMAP+GTIMER_COUNTER_UPPER_OFFSET) != clock32[1]);
 }
+
+uint64_t turnNSecToTicks(uint64_t nsec) {
+    return nsec/4;
+}
