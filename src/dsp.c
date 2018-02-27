@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 
 	long lines = readActionTable(argv[1]);
 	if(lines < 0) {
-		printf("Failed to read action table file.\n");
+		printf("Failed to read/create action table.\n");
 		_exit(abs(lines));
 	}
 

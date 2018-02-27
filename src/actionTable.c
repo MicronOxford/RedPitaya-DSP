@@ -266,8 +266,11 @@ long readActionTable(char *file) {
     printf("ActionTable is %lu lines long\n", lines);
     rewind(fp);
 
-    printf("memory allocation for ActionTable...");
+    printf("Memory allocation for ActionTable...");
     actionTable = malloc(sizeof(actionLine)*lines);
+    if(actionTable == NULL) {
+        printf(" Failed\n");
+    }
     printf(" Completed\n");
 
     int bytes_read = 0;

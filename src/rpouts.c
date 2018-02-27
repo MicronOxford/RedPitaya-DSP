@@ -35,7 +35,7 @@ int initOuts(){
     RP_BASE_ADDR);
   if (OUTS_MMAP == MAP_FAILED) {
       fprintf(stderr, "mmap64(0x%lx@0x%x) failed (%d)\n",
-              PAGE_SIZE, (uint32_t)(RP_BASE_ADDR), errno);
+              (long int)PAGE_SIZE, (uint32_t)(RP_BASE_ADDR), errno);
       return 1;
   }
 

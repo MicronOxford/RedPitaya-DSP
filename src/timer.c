@@ -41,7 +41,7 @@ int initTimer(){
     GLOBAL_TMR_BASEADDR);
   if (TIMER_MMAP == MAP_FAILED) {
       fprintf(stderr, "mmap64(0x%lx@0x%x) failed (%d)\n",
-              PAGE_SIZE, (uint32_t)(XPAR_GLOBAL_TMR_BASEADDR), errno);
+              (long int)PAGE_SIZE, (uint32_t)(XPAR_GLOBAL_TMR_BASEADDR), errno);
       return 1;
   }
 
