@@ -130,9 +130,39 @@ int execActionTable(const long lines) {
 		actionLine actLine = actionTable[line];
 		nextTime = startTime + actLine.clocks;
 
-		while (currentTime  < nextTime) updateCurrentTime();
 
-		*(actLine.pinAddr) = actLine.valToWrite;
+		if(actLine.action < 0) {
+			int pinNum = actLine.pin;
+			int inputType = abs(actLine.action);
+			if(pinNum < 0 || pinNum > 15 || inputType > 3) {
+				printf("Error not expected at line %ld\n", line);
+			}
+			volatile uint32_t * memAddr = getPinPDir();
+			if(pinNum > 7) {
+				pinNum -= 8;
+				memAddr = getPinNDir();
+			}
+			
+			while (currentTime  < nextTime) updateCurrentTime();
+			*memAddr &= ~(1 << pinNum);
+			if(inputType == 3) {
+				if((*(actLine.pinAddr) & actLine.valToWrite)) {
+					inputType = 2;
+				} else {
+					inputType = 1;
+				}
+			}
+			if(inputType == 1) {
+				while((*(actLine.pinAddr) && actLine.valToWrite) == 0) { }
+			} else {
+				while((*(actLine.pinAddr) && actLine.valToWrite) != 0) { }
+			}
+			*memAddr |= (1 << pinNum);
+
+		} else {
+			while (currentTime  < nextTime) updateCurrentTime();
+			*(actLine.pinAddr) = actLine.valToWrite;
+		}
 	}
 	
 	return 0;

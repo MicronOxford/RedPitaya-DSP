@@ -5,8 +5,8 @@
 /* Expansion connector direction P/N(1-out 0-in)
 [31:8]  Reserved                    (Read Only)
 [7:0]   Direction for P/N lines     (R/W)*/
-#define PINN_DIR    0x14
 #define PINP_DIR    0x10
+#define PINN_DIR    0x14
 /* Expansion connector output P/N
 [31:8]  Reserved            (Read Only)
 [7:0]   P/N pins output     (R/W) */

@@ -41,11 +41,11 @@ int initOuts(){
   }
 
 // turn all pins into ouput mode
-  *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_DIR) |= 0x000000FF;
-  *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_DIR) |= 0x000000FF;
+  *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_DIR) |= 0x000000FF;
+  *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_DIR) |= 0x000000FF;
 //set all pins to 0
-  *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT) = 0;
-  *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT) = 0;
+  *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT) = 0;
+  *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT) = 0;
 //set all pins' starting state to 0
   pinsP = 0;
   pinsN = 0;
@@ -54,16 +54,38 @@ int initOuts(){
 }
 
 inline void out_setpins_P(int pins){
-  *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT) = pins;
+  *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT) = pins;
 }
 
 inline void out_setpins_N(int pins){
-  *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT) = pins;
+  *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT) = pins;
 }
 
 void turnLEDs(int leds) {
-  *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+LED) = leds;
+  *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+LED) = leds;
 }
+
+/*void setPinToInput(int pin) {
+  volatile uint32_t * memAddr;
+  if(pin < 8) {
+    memAddr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_DIR);
+  } else {
+    memAddr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_DIR);
+    pin -= 8;
+  }
+  *memAddr &= ~(1<<pin);
+}*/
+
+/*void setPinToOutput(int pin) {
+  volatile uint32_t * memAddr;
+  if(pin < 8) {
+    memAddr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_DIR);
+  } else {
+    memAddr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_DIR);
+    pin -= 8;
+  }
+  *memAddr |= (1<<pin);
+}*/
 
 /*uint32_t out_getpins(){
   return *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT);
@@ -112,6 +134,14 @@ int setPinVal(int pin, int action, volatile uint32_t ** addr, uint32_t *val) {
         action = -3;
       }
 
+      if(pin > 7) {
+        pin -= 8;
+        *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_IN);
+      } else {
+        *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_IN);
+      }
+      *val = (1<<pin);
+
     } else {
       // digital output
       // action 0 = clear pin   (stop signal)
@@ -140,4 +170,12 @@ int setPinVal(int pin, int action, volatile uint32_t ** addr, uint32_t *val) {
     }
   }
   return 0;
+}
+
+volatile uint32_t * getPinPDir() {
+  return (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_IN);
+}
+
+volatile uint32_t * getPinNDir() {
+  return (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_IN);
 }
