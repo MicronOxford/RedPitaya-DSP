@@ -287,7 +287,7 @@ long readActionTable(char *file) {
             return -1;
         }
         if (readActionTableLine(linestr, lineno) < 0){
-            printf("readActionTableLine failed on %lu\n", lineno);
+            printf("readActionTableLine failed on line number %lu\n", lineno);
             free(linestr);
             return -1;
         }
@@ -308,11 +308,11 @@ int readActionTableLine(char *line, long lineno){
     char *pin_s;
     // char *a1_s;
     // char *a2_s;
-    char *value_s;
+    char *action_s;
 
     nstime_s = strtok(line, DELIM);  // REMINDER: first strtok call needs the str.
     if (nstime_s == NULL){
-        printf("action nstime is NULL for '%s'\n", line);
+        printf("nstime is NULL for '%s'\n", line);
         return -1;
     }
     // pinP_s = strtok(NULL, DELIM);
@@ -327,7 +327,7 @@ int readActionTableLine(char *line, long lineno){
     // }
     pin_s = strtok(NULL, DELIM);
     if (pin_s == NULL){
-        printf("pinN is NULL for %s\n", line);
+        printf("pin number is NULL for %s\n", line);
         return -1;
     }
     // a1_s = strtok(NULL, DELIM);
@@ -340,9 +340,9 @@ int readActionTableLine(char *line, long lineno){
     //     printf("a2_s is NULL for %s", line);
     //     return -1;
     // }
-    value_s = strtok(NULL, DELIM);
-    if (value_s == NULL){
-        printf("pinN is NULL for %s\n", line);
+    action_s = strtok(NULL, DELIM);
+    if (action_s == NULL){
+        printf("action is NULL for %s\n", line);
         return -1;
     }
     //actionTable[lineno].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / 1000000000L;
@@ -352,15 +352,15 @@ int readActionTableLine(char *line, long lineno){
     actionTable[lineno].pin = atoi(pin_s);
     // actionTable[lineno].a1 = strtol(a1_s, NULL, 10);
     // actionTable[lineno].a2 = strtol(a2_s, NULL, 10);
-    actionTable[lineno].value = strtol(value_s, NULL, 10);
+    actionTable[lineno].action = strtol(action_s, NULL, 10);
     // printf("row: %lu time:%llu pinP:%i pinN:%i a1:%i\n", lineno, actionTable[lineno].clocks, actionTable[lineno].pinP, actionTable[lineno].pinN, actionTable[lineno].a1);
-    printf("row: %lu time:%llu pin:%i value:%i\n",
+    printf("row: %lu time:%llu pin:%i action:%i\n",
         lineno,
         (unsigned long long int) actionTable[lineno].nsec,
         actionTable[lineno].pin,
-        actionTable[lineno].value);
+        actionTable[lineno].action);
 
     actionTable[lineno].clocks = turnNSecToTicks(actionTable[lineno].nsec);
-    return setPinVal(actionTable[lineno].pin, actionTable[lineno].value,
+    return setPinVal(actionTable[lineno].pin, actionTable[lineno].action,
         &actionTable[lineno].pinAddr, &actionTable[lineno].valToWrite);
 }

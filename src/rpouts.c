@@ -11,6 +11,7 @@
 
 #include "rpouts.h"
 #include "RPmemmap.h"
+#include "fpga_awg.h"
 
 #define PAGE_SIZE ((size_t)getpagesize())
 #define PAGE_MASK ((uint64_t)(long)~(PAGE_SIZE - 1))
@@ -73,59 +74,70 @@ pin [0-7]   =   pinP [0-7]
 pin [8-15]  =   pinN [0-7]
 pin -1 & -2 =   analogue output 1 & 2
 */
-int setPinVal(int pin, int value, volatile uint32_t ** addr, uint32_t *val) {
+int setPinVal(int pin, int action, volatile uint32_t ** addr, uint32_t *val) {
   if(pin < 0) {
-// analogue output - NOT IMPLEMENTED YET
-    abs(pin);
+    // analogue output
+    // pin -1 = OUT1
+    // pin -2 = OUT2
+    // action [-4096,-4095] = output [-1,1]V
+    pin  = abs(pin);
     if(pin > 2) {
       printf("Analogue pin number was bigger than 2 (%d)\n", pin);
       return -1;
     }
-    //TODO Implement analogue output
+
+    *addr = get_awg_chanel_mem(pin);
+    *val = action; //TODO check range of values
+
+    if(*addr == NULL) {
+      printf("Error processing analogue output\n");
+      return -1;
+    }
   } else {
-// digital pin out/in put
-    if(pin > 17) {
-      printf("Digital pin number was bigger than 17 (%d)\n", pin);
+    // digital pin out/in put (in E1)
+    // pins[0-7]  = DIO[0-7]_P
+    // pins[8-15] = DIO[0-7]_N
+    if(pin > 15) {
+      printf("Digital pin number was bigger than 15 (%d)\n", pin);
       return -1;
     }
 
-    /*if(*value < 0) {
+    if(action < 0) {
       // digital input
-      // value -1 = wait for signal to be 1
-      // value -2 = wait for signal to be 0
-      // value -3 = wait for edge
-
-      if(*value < -3) {
-        printf("WARNING! Value was %i - expected to be between -3 to 1", *value)
+      // action -1 = wait for signal to be 1
+      // action -2 = wait for signal to be 0
+      // action -3 = wait for edge
+      if(action < -3) {
+        printf("WARNING! Action was %i - digital input action should be -1, -2 or -3 (-3 apply by default)!\n", action);
+        action = -3;
       }
 
     } else {
+      // digital output
+      // action 0 = clear pin   (stop signal)
+      // action 1 = set pin     (send signal)
+      if(action > 1){
+        printf("WARNING! Action was %i - digital output action should be 1 or 0 (1 apply by default)\n", action);
+        action = 1;
+      }
 
-    }*/
-    
+      volatile uint32_t *pinStates;
+      if(pin > 7) {
+        pin -= 8;
+        *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT);
+        pinStates = &pinsN;
+      } else {
+        *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT);
+        pinStates = &pinsP;
+      }
 
-    volatile uint32_t *pinStates;
-    if(pin > 7) {
-      pin -= 8;
-      *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT);
-      pinStates = &pinsN;
-    } else {
-      *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT);
-      pinStates = &pinsP;
+      if(action) {
+        *pinStates |= (1<<pin); 
+      } else {
+        *pinStates &= !(1<<pin);
+      }
+      *val = *pinStates;
     }
-
-    /*if(*value > 1){
-      printf("WARNING! value expected to be 0 or 1")
-      //print warning
-      *value = 1;
-    }*/
-
-    if(value) {
-      *pinStates |= (1<<pin); 
-    } else {
-      *pinStates &= !(1<<pin);
-    }
-    *val = *pinStates;
   }
   return 0;
 }

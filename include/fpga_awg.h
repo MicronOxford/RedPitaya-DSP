@@ -141,4 +141,6 @@ int fpga_awg_exit(void);
 void fpga_awg_write_val_a(uint32_t val);
 void fpga_awg_write_val_b(uint32_t val);
 
+uint32_t* get_awg_chanel_mem(int channel);
+
 #endif // _FPGA_AWG_H_
