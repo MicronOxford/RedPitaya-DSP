@@ -221,11 +221,13 @@ void fpga_awg_write_val_b(uint32_t val){
 }
 
 uint32_t* get_awg_chanel_mem(int channel) {
-    if(channel == 1) {
-        return g_awg_cha_mem;
+    switch(channel) {
+        case 1:
+            return g_awg_cha_mem;
+        case 2:
+            return g_awg_chb_mem;
+        default:
+            return NULL;
     }
-    if(channel == 1) {
-        return g_awg_chb_mem;
-    }
-    return NULL;
+    //return NULL;
 }
