@@ -361,6 +361,6 @@ int readActionTableLine(char *line, long lineno){
         actionTable[lineno].action);
 
     actionTable[lineno].clocks = turnNSecToTicks(actionTable[lineno].nsec);
-    return setPinVal(actionTable[lineno].pin, actionTable[lineno].action,
+    return setPinVal(actionTable[lineno].pin, &actionTable[lineno].action,
         &actionTable[lineno].pinAddr, &actionTable[lineno].valToWrite);
 }

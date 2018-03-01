@@ -96,20 +96,33 @@ pin [0-7]   =   pinP [0-7]
 pin [8-15]  =   pinN [0-7]
 pin -1 & -2 =   analogue output 1 & 2
 */
-int setPinVal(int pin, int action, volatile uint32_t ** addr, uint32_t *val) {
+int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
   if(pin < 0) {
     // analogue output
     // pin -1 = OUT1
     // pin -2 = OUT2
-    // action [-4096,-4095] = output [-1,1]V
+    // action [-4096,4095] = output [-1,1]V
     pin  = abs(pin);
     if(pin > 2) {
       printf("Analogue pin number was bigger than 2 (%d)\n", pin);
       return -1;
     }
 
+    if(*action < 0) {
+      if(*action < -4096) { // 0xF000
+        printf("WARNING! Action was %i. Negative analogue output should be between -1 to -4096 (-4096 apply by default)!\n", *action);
+        *action = -4096;
+      }
+      *action += 0x3000;
+    } else {
+      if(*action > 4095) { // 0x0FFF
+        printf("WARNING! Action was %i. Positive analogue output should be between 0 to 4095 (4095 apply by default)!\n", *action);
+        *action = 4095;
+      }
+    }
+
     *addr = get_awg_chanel_mem(pin);
-    *val = action; //TODO check range of values
+    *val = *action; //TODO check range of values
 
     if(*addr == NULL) {
       printf("Error processing analogue output\n");
@@ -124,14 +137,14 @@ int setPinVal(int pin, int action, volatile uint32_t ** addr, uint32_t *val) {
       return -1;
     }
 
-    if(action < 0) {
+    if(*action < 0) {
       // digital input
       // action -1 = wait for signal to be 1
       // action -2 = wait for signal to be 0
       // action -3 = wait for edge
-      if(action < -3) {
-        printf("WARNING! Action was %i - digital input action should be -1, -2 or -3 (-3 apply by default)!\n", action);
-        action = -3;
+      if(*action < -3) {
+        printf("WARNING! Action was %i. Digital input action should be -1, -2 or -3 (-3 apply by default)!\n", *action);
+        *action = -3;
       }
 
       if(pin > 7) {
@@ -146,9 +159,9 @@ int setPinVal(int pin, int action, volatile uint32_t ** addr, uint32_t *val) {
       // digital output
       // action 0 = clear pin   (stop signal)
       // action 1 = set pin     (send signal)
-      if(action > 1){
-        printf("WARNING! Action was %i - digital output action should be 1 or 0 (1 apply by default)\n", action);
-        action = 1;
+      if(*action > 1){
+        printf("WARNING! Action was %i. Digital output action should be 1 or 0 (1 apply by default)\n", *action);
+        *action = 1;
       }
 
       volatile uint32_t *pinStates;
@@ -161,7 +174,7 @@ int setPinVal(int pin, int action, volatile uint32_t ** addr, uint32_t *val) {
         pinStates = &pinsP;
       }
 
-      if(action) {
+      if(*action) {
         *pinStates |= (1<<pin); 
       } else {
         *pinStates &= !(1<<pin);
