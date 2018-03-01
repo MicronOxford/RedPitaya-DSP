@@ -352,7 +352,7 @@ int readActionTableLine(char *line, long lineno){
     actionTable[lineno].pin = atoi(pin_s);
     // actionTable[lineno].a1 = strtol(a1_s, NULL, 10);
     // actionTable[lineno].a2 = strtol(a2_s, NULL, 10);
-    actionTable[lineno].action = strtol(action_s, NULL, 10);
+    actionTable[lineno].action = atoi(action_s);
     // printf("row: %lu time:%llu pinP:%i pinN:%i a1:%i\n", lineno, actionTable[lineno].clocks, actionTable[lineno].pinP, actionTable[lineno].pinN, actionTable[lineno].a1);
     printf("row: %lu time:%llu pin:%i action:%i\n",
         lineno,

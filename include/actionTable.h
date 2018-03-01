@@ -31,7 +31,7 @@ long createActionTable(char *path);*/
 typedef struct actionTable {
     uint64_t nsec;
     int pin;
-    uint32_t action;
+    int action;
     uint64_t clocks;
     volatile uint32_t * pinAddr;
     uint32_t valToWrite;

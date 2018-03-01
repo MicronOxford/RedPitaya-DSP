@@ -153,9 +153,9 @@ int execActionTable(const long lines) {
 				}
 			}
 			if(inputType == 1) {
-				while((*(actLine.pinAddr) && actLine.valToWrite) == 0) { }
+				while((*(actLine.pinAddr) & actLine.valToWrite) == 0) { }
 			} else {
-				while((*(actLine.pinAddr) && actLine.valToWrite) != 0) { }
+				while((*(actLine.pinAddr) & actLine.valToWrite) != 0) { }
 			}
 			*memAddr |= (1 << pinNum);
 
