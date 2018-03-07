@@ -1,5 +1,6 @@
 /*
 * Copyright (C) 2015 Tom Parks
+* Copyright (C) 2017-2018 Tiago Susano Pinto <tiagosusanopinto@gmail.com>
 *
 * This file is part of RedPitaya-DSP.
 *
