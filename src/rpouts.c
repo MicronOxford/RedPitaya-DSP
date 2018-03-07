@@ -117,6 +117,7 @@ pin [8-15]  =   pinN [0-7]
 pin -1 & -2 =   analogue output 1 & 2
 */
 int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
+  int returnVal = 0;
   if(pin < 0) {
     // analogue output
     // pin -1 = OUT1
@@ -132,12 +133,14 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
       if(*action < -4096) { // 0xF000
         printf("WARNING! Action was %i. Negative analogue output should be between -1 to -4096 (-4096 apply by default)!\n", *action);
         *action = -4096;
+        returnVal = 1;
       }
       *action += 0x3000;
     } else {
       if(*action > 4095) { // 0x0FFF
         printf("WARNING! Action was %i. Positive analogue output should be between 0 to 4095 (4095 apply by default)!\n", *action);
         *action = 4095;
+        returnVal = 1;
       }
     }
 
@@ -165,6 +168,7 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
       if(*action < -3) {
         printf("WARNING! Action was %i. Digital input action should be -1, -2 or -3 (-3 apply by default)!\n", *action);
         *action = -3;
+        returnVal = 1;
       }
 
       if(pin > 7) {
@@ -182,6 +186,7 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
       if(*action > 1){
         printf("WARNING! Action was %i. Digital output action should be 1 or 0 (1 apply by default)\n", *action);
         *action = 1;
+        returnVal = 1;
       }
 
       volatile uint32_t *pinStates;
@@ -202,7 +207,7 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
       *val = *pinStates;
     }
   }
-  return 0;
+  return returnVal;
 }
 
 volatile uint32_t * getPinPDir() {

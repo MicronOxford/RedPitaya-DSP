@@ -21,43 +21,17 @@
 #include <stdint.h>
 // #include <stdio.h>
 
-/*typedef struct actionTable {
-    long double actionTime;
-    int pinP;
-    int pinN;
-    uint32_t a1;
-    uint32_t a2;
-    double executedTime;
-} actionTable_t;*/
-
-/*typedef struct { // struct ACTION LINE
-    uint64_t actionTime; // action time (in clock ticks)
+typedef struct { // struct ActionLine
+    uint64_t nsec; // action time, in nsec
     int pin; // pin number
-    int action; // action (1: set pin on; 0: clear pin off; -1: wait for pin)
-    volatile uint32_t * pinAddr; // pin's virtual address to write the action (given by gpioControl)
-    uint32_t valToWrit; // value to write in order to execute the action on the pin (given by gpioControl)
-    unsigned long long int executedTime; // ~time when the action was executed (CURRENTLY NOT IMPLEMENT)
-} actionLine;
-
-//actionTable_t *table;
-actionLine *actionTable; //
-long int numberOfLines;
-
-//long createActionTable(char *path);
-long createActionTable(char *path);*/
-
-
-
-typedef struct actionTable {
-    uint64_t nsec;
-    int pin;
-    int action;
-    uint64_t clocks;
-    volatile uint32_t * pinAddr;
-    uint32_t valToWrite;
+    int action; // action
+    uint64_t clocks; //  action time, in clock ticks
+    volatile uint32_t * actAddr; // memory address relative to action
+    uint32_t actVal; // value to write/check to execute the action
+    // unsigned long long int executedTime; // ~time when the action was executed (CURRENTLY NOT IMPLEMENT)
 } actionLine;
 
 actionLine *actionTable;
+//long int numberOfLines;
 
-long readActionTable(char *file);
-// int readActionTableLine(char *line, long lineno);
+long createActionTable(char *file);

@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 
 	initializeAll();
 
-	long lines = readActionTable(argv[1]);
+	long lines = createActionTable(argv[1]);
 	if(lines < 0) {
 		printf("Failed to read/create action table.\n");
 		_exit(abs(lines));
@@ -166,22 +166,22 @@ int execActionTable(const long lines) {
 			while (currentTime  < nextTime) updateCurrentTime();
 			*memAddr &= ~(1 << pinNum);
 			if(inputType == 3) {
-				if((*(actLine.pinAddr) & actLine.valToWrite)) {
+				if((*(actLine.actAddr) & actLine.actVal)) {
 					inputType = 2;
 				} else {
 					inputType = 1;
 				}
 			}
 			if(inputType == 1) {
-				while((*(actLine.pinAddr) & actLine.valToWrite) == 0) { }
+				while((*(actLine.actAddr) & actLine.actVal) == 0) { }
 			} else {
-				while((*(actLine.pinAddr) & actLine.valToWrite) != 0) { }
+				while((*(actLine.actAddr) & actLine.actVal) != 0) { }
 			}
 			*memAddr |= (1 << pinNum);
 
 		} else {
 			while (currentTime  < nextTime) updateCurrentTime();
-			*(actLine.pinAddr) = actLine.valToWrite;
+			*(actLine.actAddr) = actLine.actVal;
 		}
 	}
 	
