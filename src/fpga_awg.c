@@ -77,7 +77,7 @@ const double c_awg_smpl_freq = 125e6;
  * This function un-maps FPGA register and signal buffers, closes memory file
  * descriptor and cleans all memory allocated by this module.
  *
- * @retval 0 Success
+ * @retval 0 Success;
  * @retval -1 Error happened during cleanup.
  */
 int __awg_cleanup_mem(void)
@@ -166,15 +166,15 @@ int fpga_awg_init(void)
     // scaleoff from generate. magic number.
     // int32_t gain = (-155 << 16) + 0x1fff;
 
-    g_awg_reg->state_machine_conf = 0x410041;
+    g_awg_reg->state_machine_conf = 0x00410041;
 
-    g_awg_reg->cha_scale_off      = 0xFFFFFFFF;
-    g_awg_reg->cha_count_wrap     = 65536*2;
+    g_awg_reg->cha_scale_off      = ((0x0 << 16) | (0x2000)) & 0x3FFF3FFF;//0xFFFFFFFF;
+    g_awg_reg->cha_count_wrap     = 0;//65536*2;
     g_awg_reg->cha_count_step     = 0;
     g_awg_reg->cha_start_off      = 0;
 
-    g_awg_reg->chb_scale_off      = 0xFFFFFFFF;
-    g_awg_reg->chb_count_wrap     = 65536*2;
+    g_awg_reg->chb_scale_off      = ((0x0 << 16) | (0x2000)) & 0x3FFF3FFF;//0xFFFFFFFF;
+    g_awg_reg->chb_count_wrap     = 0;//65536*2;
     g_awg_reg->chb_count_step     = 0;
     g_awg_reg->chb_start_off      = 0;
 

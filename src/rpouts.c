@@ -122,7 +122,7 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
     // analogue output
     // pin -1 = OUT1
     // pin -2 = OUT2
-    // action [-4096,4095] = output [-1,1]V
+    // action [-8192,8191] = output [-1,1]V
     pin  = abs(pin);
     if(pin > 2) {
       printf("Analogue pin number was bigger than 2 (%d)\n", pin);
@@ -130,16 +130,16 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
     }
 
     if(*action < 0) {
-      if(*action < -4096) { // 0xF000
-        printf("WARNING! Action was %i. Negative analogue output should be between -1 to -4096 (-4096 apply by default)!\n", *action);
-        *action = -4096;
+      if(*action < -8192) { // -0x2000
+        printf("WARNING! Action was %i. Negative analogue output should be between -1 to -8192 (-8192 apply by default)!\n", *action);
+        *action = -8192;
         returnVal = 1;
       }
-      *action += 0x3000;
+      *action += 0x4000;
     } else {
-      if(*action > 4095) { // 0x0FFF
-        printf("WARNING! Action was %i. Positive analogue output should be between 0 to 4095 (4095 apply by default)!\n", *action);
-        *action = 4095;
+      if(*action > 8191) { // 0x1FFF
+        printf("WARNING! Action was %i. Positive analogue output should be between 0 to 8191 (8191 apply by default)!\n", *action);
+        *action = 8191;
         returnVal = 1;
       }
     }
