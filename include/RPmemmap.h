@@ -31,7 +31,7 @@
 #define PINN_DIR    0x14
 /* Expansion connector output P/N
 [31:8]  Reserved                        (Read Only)
-[7:0]   P/N pins output                 (R/W) */
+[7:0]   P/N pins output                 (R/W)*/
 #define PINP_OUT    0x18
 #define PINN_OUT    0x1C
 /* Expansion connector input P/N
@@ -77,19 +77,19 @@ CHANNEL A
 #define ASG_CONFIG     0x0
 /*Channel A amplitude scale and offset
     output = (data*scale)/0x2000 + offset       
-[31:30] Reserved                    (Read Only)
-[29:16] Amplitude offset            (R/W)
-[15:14] Reserved                    (Read Only)
-[13:0]  Amplitude scale (Unsigned)  (R/W)
+[31:30] Reserved                        (Read Only)
+[29:16] Amplitude offset                (R/W)
+[15:14] Reserved                        (Read Only)
+[13:0]  Amplitude scale (Unsigned)      (R/W)
             0x2000 == multiply by 1
 */
 #define CHA_SCALE_OFF  0x04
 /*Channel B amplitude scale and offset
     output = (data*scale)/0x2000 + offset       
-[31:30] Reserved                    (Read Only)
-[29:16] Amplitude offset            (R/W)
-[15:14] Reserved                    (Read Only)
-[13:0]  Amplitude scale (Unsigned)  (R/W)
+[31:30] Reserved                        (Read Only)
+[29:16] Amplitude offset                (R/W)
+[15:14] Reserved                        (Read Only)
+[13:0]  Amplitude scale (Unsigned)      (R/W)
             0x2000 == multiply by 1
 */
 #define CHB_SCALE_OFF  0x24
