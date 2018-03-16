@@ -73,43 +73,18 @@ int initOuts(){
   return 0;
 }
 
-inline void out_setpins_P(int pins){
+void setPinsP(uint32_t pins){
   *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT) = pins;
 }
 
-inline void out_setpins_N(int pins){
+void setPinsN(uint32_t pins){
   *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_OUT) = pins;
 }
 
-void turnLEDs(int leds) {
+void setLEDs(uint32_t leds) {
   *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+LED) = leds;
 }
 
-/*void setPinToInput(int pin) {
-  volatile uint32_t * memAddr;
-  if(pin < 8) {
-    memAddr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_DIR);
-  } else {
-    memAddr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_DIR);
-    pin -= 8;
-  }
-  *memAddr &= ~(1<<pin);
-}*/
-
-/*void setPinToOutput(int pin) {
-  volatile uint32_t * memAddr;
-  if(pin < 8) {
-    memAddr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_DIR);
-  } else {
-    memAddr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINN_DIR);
-    pin -= 8;
-  }
-  *memAddr |= (1<<pin);
-}*/
-
-/*uint32_t out_getpins(){
-  return *( volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+PINP_OUT);
-}*/
 
 /*
 pin [0-7]   =   pinP [0-7]

@@ -202,8 +202,9 @@ void _exit(int status) {
 	// rp_ApinReset();
 	// rp_DpinReset();
 	// rp_Release();
-	out_setpins_P(0);
-	out_setpins_N(0);
+	setPinsP(0x0);
+	setPinsN(0x0);
+	setLEDs(0x0);
 	fpga_awg_exit();
 	exit(status);
 }
