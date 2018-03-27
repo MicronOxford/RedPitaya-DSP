@@ -30,7 +30,6 @@
 #include <math.h>
 //#include "timer.h"
 //#include "rpouts.h"
-//#include "fpga_awg.h"
 #include "gpioControl.h"
 #include "timeControl.h"
 #include "actionTable.h"
@@ -149,11 +148,6 @@ void initializeAll() {
 
     // if(initOuts() != 0){
     //     fprintf(stderr, "Rp api init failed!\n");
-    //     _exit(2);
-    // }
-
-    // if(fpga_awg_init() != 0){
-    //     fprintf(stderr, "FPGA init failed!\n");
     //     _exit(2);
     // }
 
@@ -289,8 +283,7 @@ void _exit(int status) {
     // rp_DpinReset();
     // rp_Release();
     /*out_setpins_P(0); //TODO activate this (uncoment)
-    out_setpins_N(0);
-    fpga_awg_exit();*/
+    out_setpins_N(0);*/
     exit(status);
 }
 

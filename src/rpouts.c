@@ -31,7 +31,6 @@
 
 #include "rpouts.h"
 #include "RPmemmap.h"
-//#include "fpga_awg.h"
 
 #define PAGE_SIZE ((size_t)getpagesize())
 #define PAGE_MASK ((uint64_t)(long)~(PAGE_SIZE - 1))
@@ -74,51 +73,47 @@ int initOuts() {
     // set to 0 (turn off) all LEDs
     // *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+LED) = 0;
 
-    printf("config - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+ASG_CONFIG));
-    printf("scaleA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHA));
-    printf("scaleB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHB));
-    printf("ctwrpA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHA));
-    printf("ctwrpB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHB));
-    printf("startA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHA));
-    printf("startB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHB));
-    printf("ctstpA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHA));
-    printf("ctstpB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHB));
-    printf("readpA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHA));
-    printf("readpB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHB));
-    printf("readcA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHA));
-    printf("readcB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHB));
-    printf("numbrA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHA));
-    printf("numbrB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHB));
-    printf("dlybrA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHA));
-    printf("dlybrB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHB));
-    printf("outptA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA));
-    printf("outptB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB));
-
-
+    // printf("config - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+ASG_CONFIG));
+    // printf("scaleA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHA));
+    // printf("scaleB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHB));
+    // printf("ctwrpA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHA));
+    // printf("ctwrpB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHB));
+    // printf("startA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHA));
+    // printf("startB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHB));
+    // printf("ctstpA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHA));
+    // printf("ctstpB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHB));
+    // printf("readpA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHA));
+    // printf("readpB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHB));
+    // printf("readcA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHA));
+    // printf("readcB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHB));
+    // printf("numbrA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHA));
+    // printf("numbrB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHB));
+    // printf("dlybrA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHA));
+    // printf("dlybrB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHB));
+    // printf("outptA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA));
+    // printf("outptB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB));
 
     // reset ASG to send continous signal
-    /*
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+ASG_CONFIG) = ((1<<ASG_CONFIG_SMRESET_CHA) | (1<<ASG_CONFIG_SMRESET_CHB)) & ASG_CONFIG_NOTRESERVED;
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHA) = ((0x0 << SCALEOFF_OFFSET) | (ASG_BASE_SCALE << SCALEOFF_SCALE)) & SCALEOFF_NOTRESERVED;
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHB) = ((0x0 << SCALEOFF_OFFSET) | (ASG_BASE_SCALE << SCALEOFF_SCALE)) & SCALEOFF_NOTRESERVED;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHA) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHB) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHA) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHB) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHA) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHB) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHA) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHB) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHA) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHB) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHA) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHB) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHA) = 0x0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHB) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHA) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHB) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHA) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHB) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHA) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHB) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHA) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHB) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHA) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHB) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHA) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHB) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHA) = 0x0;
+    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHB) = 0x0;
     // set analogue output signal to 0
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA) = 0;
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB) = 0;
-    */
 
     close(OUTS_FD);
     return 0;
@@ -129,8 +124,8 @@ int exitOuts() {
     *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+OUT_PINN) = 0;
     // *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+LED) = 0;
 
-/*    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA) = 0;
-    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB) = 0;*/
+    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA) = 0;
+    *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB) = 0;
 
     // return munmap(OUTS_MMAP, PAGE_SIZE*2048); //TODO add print about error
     return 0;
@@ -165,8 +160,10 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
         switch(pin) {
             case 1:
                 *addr = (volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA);
+                break;
             case 2:
                 *addr = (volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB);
+                break;
             default:
                 printf("Analogue pin number was bigger than 2 (%d)\n", pin);
                 return -1;

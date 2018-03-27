@@ -27,7 +27,6 @@
 #include <sched.h>
 #include "timer.h"
 #include "rpouts.h"
-#include "fpga_awg.h"
 #include "actionTable.h"
 
 // #define MAXLINELEN 50
@@ -100,11 +99,6 @@ void initializeAll() {
 
 	if(initOuts() < 0){
 		fprintf(stderr, "Rp api init failed!\n");
-		_exit(2);
-	}
-
-	if(fpga_awg_init() != 0){
-		fprintf(stderr, "FPGA init failed!\n");
 		_exit(2);
 	}
 
@@ -197,15 +191,8 @@ void sig_handler(int signo){
 
 void _exit(int status) {
 	free(actionTable);
-	// rp_GenAmp(RP_CH_1, 0);
-	// rp_GenAmp(RP_CH_2, 0);
-	// rp_ApinReset();
-	// rp_DpinReset();
-	// rp_Release();
-	/*setPinsP(0x0);
-	setPinsN(0x0);
-	setLEDs(0x0);*/
+
 	exitOuts();
-	fpga_awg_exit();
+
 	exit(status);
 }

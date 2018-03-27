@@ -45,9 +45,6 @@ objs/dsp.o: src/dsp.c objs
 objs/primeNums.o: src/primeNums.c objs
 	$(CC) $(CFLAGS) -c $< -o $@
 
-objs/fpga_awg.o: src/fpga_awg.c include/fpga_awg.h objs
-	$(CC) $(CFLAGS) -c $< -o $@
-
 objs/rpouts.o: src/rpouts.c include/rpouts.h objs
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -63,7 +60,7 @@ objs/timer.o: src/timer.c include/timer.h include/xparameters.h objs
 objs/actionTable.o: src/actionTable.c include/actionTable.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-dsp: objs/dsp.o objs/timer.o objs/rpouts.o objs/fpga_awg.o objs/actionTable.o
+dsp: objs/dsp.o objs/timer.o objs/rpouts.o objs/actionTable.o
 	mkdir -p build/bin
 	$(CC) $(CFLAGS) -o build/bin/$@ $^
 
@@ -90,7 +87,7 @@ pythonpackages: rpos
 	pip install -t $(PYTHONLIBS) --no-dependencies $(PYTHONPACKAGES)
 
 atest: Atest.c
-	$(CC) $(CFLAGS) -O0 Atest.c fpga_awg.c -lm -o atest $(LNK)
+	$(CC) $(CFLAGS) -O0 Atest.c -lm -o atest $(LNK)
 
 scp:
 	scp build/bin/server build/bin/dsp root@$(IP):/tmp/

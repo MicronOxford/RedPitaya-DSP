@@ -77,8 +77,8 @@ CHANNEL A
             3-external trigger negative edge*/
 #define ASG_CONFIG      0x0
 #define ASG_CONFIG_NOTRESERVED 0x01DF01DF
-#define ASG_CONFIG_SMRESET_CHA 22
-#define ASG_CONFIG_SMRESET_CHB 6
+#define ASG_CONFIG_SMRESET_CHB 22
+#define ASG_CONFIG_SMRESET_CHA 6
 /*Channel A/B amplitude scale and offset
     output = (data*scale)/0x2000 + offset       
 [31:30] Reserved                        (Read Only)
