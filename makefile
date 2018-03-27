@@ -54,13 +54,13 @@ objs/timer.o: src/timer.c include/timer.h include/xparameters.h objs
 # objs/gpioControl.o: src/gpioControl.c include/gpioControl.h
 # 	$(CC) $(CFLAGS) -c $< -o $@
 
-# objs/timeControl.o: src/timeControl.c include/timeControl.h
-# 	$(CC) $(CFLAGS) -c $< -o $@
+objs/timeControl.o: src/timeControl.c include/timeControl.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
 objs/actionTable.o: src/actionTable.c include/actionTable.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-dsp: objs/dsp.o objs/timer.o objs/rpouts.o objs/actionTable.o
+dsp: objs/dsp.o objs/timeControl.o objs/rpouts.o objs/actionTable.o
 	mkdir -p build/bin
 	$(CC) $(CFLAGS) -o build/bin/$@ $^
 

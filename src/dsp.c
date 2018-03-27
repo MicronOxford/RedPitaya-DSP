@@ -25,7 +25,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <sched.h>
-#include "timer.h"
+//#include "timer.h"
+#include "timeControl.h"
 #include "rpouts.h"
 #include "actionTable.h"
 
@@ -136,7 +137,7 @@ int execActionTable(const long lines) {
 	printf("set time\n");
 	uint64_t nextTime = 0;
 	updateCurrentTime();
-	updateStartTime(currentTime);
+	uint64_t startTime = currentTime; //updateStartTime(currentTime);
 	// XTime_SetTime(0);
 	// XTime_GetTime(&now);
 
@@ -171,6 +172,8 @@ int execActionTable(const long lines) {
 			} else {
 				while((*(actLine.actAddr) & actLine.actVal) != 0) { }
 			}
+			updateCurrentTime();
+			startTime = currentTime; //updateStartTime(currentTime);
 			*memAddr |= (1 << pinNum);
 
 		} else {

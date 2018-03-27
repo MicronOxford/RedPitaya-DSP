@@ -26,6 +26,6 @@ void XTime_GetTime(XTime *Xtime_Global);
 uint64_t startTime;
 uint64_t currentTime;
 
-void updateStartTime();
+// void updateStartTime();
 void updateCurrentTime();
 uint64_t turnNSecToTicks(uint64_t nsec);

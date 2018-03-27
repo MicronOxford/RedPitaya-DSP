@@ -106,9 +106,9 @@ void XTime_GetTime(XTime *Xtime_Global)
 /*******************************************************************************/
 
 
-void updateStartTime(uint64_t time) {
-    startTime = time;
-}
+// void updateStartTime(uint64_t time) {
+//     startTime = time;
+// }
 
 void updateCurrentTime() {
     do {

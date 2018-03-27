@@ -18,18 +18,31 @@
 */
 
 #include <stdint.h>
+#include "xparameters.h"
 
-#define BILLION  1000000000
+/*#define BILLION  1000000000
 #define ARM_QA7_CONTROL_REG 0x40000000
 #define ARM_QA7_CONTROL_RE1 0x401BE000
 #define ARM_TIMER_OFFSET 7
 #define CLOCK_LSB 7
 #define CLOCK_MSB 8
 #define PROC_FREQ 19200000 //19.2MHz
-//#define NANO_PER_CLICK 52
+// #define NANO_PER_CLICK 52*/
+
+#define TIMER_BASE_ADDR         XPAR_GLOBAL_TMR_BASEADDR // 0xF8F00200
+#define TIMER_LOW_OFFSET        0x00
+#define TIMER_HIGH_OFFSET       0x40
+// #define TIMER_CONTROL_OFFSET    0x80
+#define NANOSEC_PER_TICK        4
+
+uint64_t currentTime;
+
+int initTimer();
+void updateCurrentTime();
+uint64_t turnNSecToTicks(uint64_t nsec);
 
 
-double getNSecPerTick();
+/*double getNSecPerTick();
 uint64_t turnNSecToTicks(unsigned long long int nSec);
 
 int initARMTimer();
@@ -43,4 +56,4 @@ int isARMTimerLessThanNext();
 void waitForNext();
 
 void printARMControl();
-void printARMTime();
+void printARMTime();*/

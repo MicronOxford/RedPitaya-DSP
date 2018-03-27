@@ -27,10 +27,13 @@
 #include <errno.h>
 
 
-#define BLOCK_SIZE (4*1024)
+#define PAGE_SIZE ((size_t)getpagesize())
+
+volatile void *TIMER_MMAP;
+volatile uint32_t *clock32;
 
 // clock access
-volatile uint32_t *ARMControl;
+/*volatile uint32_t *ARMControl;
 volatile uint64_t *ARMTimer;
 
 uint64_t startTime;
@@ -59,7 +62,7 @@ int initARMTimer() {
         return 1;
     }
 
-    /* mmap ARM Timer */
+    // mmap ARM Timer 
     ARMControl = mmap(
         NULL,                   //Any adddress in our space will do
         BLOCK_SIZE,             //Map length
@@ -80,20 +83,20 @@ int initARMTimer() {
     scanTime = (uint32_t *)&currTime;
 
     
-    /*uint32_t lsbTimer = *(ARMTimer+7);
-    uint32_t msbTimer = *(ARMTimer+8);
-    printf("test0 %08x %08x\n", lsbTimer, msbTimer);
+    // uint32_t lsbTimer = *(ARMTimer+7);
+    // uint32_t msbTimer = *(ARMTimer+8);
+    // printf("test0 %08x %08x\n", lsbTimer, msbTimer);
 
-    lsbTimer = *(ARMTimer+7);
-    sleep(300);
-    msbTimer = *(ARMTimer+8);
-    printf("test1 %08x %08x\n", lsbTimer, msbTimer);
+    // lsbTimer = *(ARMTimer+7);
+    // sleep(300);
+    // msbTimer = *(ARMTimer+8);
+    // printf("test1 %08x %08x\n", lsbTimer, msbTimer);
 
-    lsbTimer = *(ARMTimer+7);
-    msbTimer = *(ARMTimer+8);
-    printf("test2 %08x %08x\n", lsbTimer, msbTimer);
+    // lsbTimer = *(ARMTimer+7);
+    // msbTimer = *(ARMTimer+8);
+    // printf("test2 %08x %08x\n", lsbTimer, msbTimer);
 
-    testARMTimer();*/
+    // testARMTimer();
 
 
     return 0;
@@ -117,12 +120,12 @@ void testARMTimer() {
 
 }
 
-/*void resetTestTime() {
-    lsbARMTimer = 0;
-    msbARMTimer = (*(ARMTimer+CLOCK_MSB) + 1);
-    *(ARMTimer+CLOCK_LSB) = lsbARMTimer;
-    *(ARMTimer+CLOCK_MSB) = msbARMTimer;
-}*/
+// void resetTestTime() {
+//     lsbARMTimer = 0;
+//     msbARMTimer = (*(ARMTimer+CLOCK_MSB) + 1);
+//     *(ARMTimer+CLOCK_LSB) = lsbARMTimer;
+//     *(ARMTimer+CLOCK_MSB) = msbARMTimer;
+// }
 
 void startARMTimer() {
     //startTime = *(ARMTimer);
@@ -136,9 +139,9 @@ inline void updateARMTimer() {
     } while (*(scanTime) == 0xFFFFFFFF);
 }
 
-/*void getARMTimer(uint64_t *utime) {
-   *utime = *(ARMTimer);
-}*/
+// void getARMTimer(uint64_t *utime) {
+//    *utime = *(ARMTimer);
+// }
 
 void setNextTime(uint64_t nTime) {
     nextTime = startTime+nTime;
@@ -181,4 +184,43 @@ void printARMTime() {
     printf("start :%li  %li\n", (long int)startTime, (long int)(startTime*nSec2TckRatio) );
     printf("now   :%li  %li\n", (long int)nowTime, (long int)(nowTime*nSec2TckRatio) );
     printf("next  :%li  %li\n", (long int)nextTime, (long int)(nextTime*nSec2TckRatio) );
+}*/
+
+int initTimer() {
+
+    int  mem_fd = open("/dev/mem", O_RDWR|O_SYNC); // open /dev/mem
+    if (mem_fd < 0) {
+        printf("can't open /dev/mem (errno %d) \n", errno);
+        return 1;
+    }
+
+    // mmap Timer 
+    TIMER_MMAP = mmap(
+        NULL,                   //Any adddress in our space will do
+        PAGE_SIZE,              //Map length
+        PROT_READ|PROT_WRITE,   // Enable reading & writting to mapped memory
+        MAP_SHARED,             //Shared with other processes
+        mem_fd,                 //File to map
+        TIMER_BASE_ADDR);   //Offset to ARM control logic
+    close(mem_fd); //No need to keep mem_fd open after mmap
+    if (TIMER_MMAP == MAP_FAILED) {
+        printf("mmap(0x%08x) failed (errno %d)\n", (uint32_t)TIMER_BASE_ADDR, errno);
+        return 1;
+    }
+
+    currentTime = 0;
+    clock32 = (volatile uint32_t *)&currentTime;
+
+    return 0;
+}
+
+void updateCurrentTime() {
+    do {
+        clock32[1] = *(volatile uint32_t *)(TIMER_MMAP+TIMER_HIGH_OFFSET);
+        clock32[0] = *(volatile uint32_t *)(TIMER_MMAP+TIMER_LOW_OFFSET);
+    } while(*(volatile uint32_t *)(TIMER_MMAP+TIMER_HIGH_OFFSET) != clock32[1]);
+}
+
+uint64_t turnNSecToTicks(uint64_t nsec) {
+    return nsec/NANOSEC_PER_TICK;
 }
