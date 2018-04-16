@@ -23,6 +23,8 @@
 // http://rpdocs.readthedocs.io/en/latest/developerGuide/software/fpga.html
 #define RP_BASE_ADDR    0x40000000
 
+/**************************************************/
+
 // GPIOs & LEDs
 #define PIN_OFFSET      0x00
 /* Expansion connector direction P/N    (1-out 0-in)
@@ -45,9 +47,12 @@
 [7:0]   LEDs 7-0                        (R/W)*/
 #define LED             0x30
 
+/**************************************************/
+
 // Analogue outputs (OUT 1/2 = Channel A/B)
 // ASG - Arbitrary Signal Generator
 #define ASG_OFFSET      0x200000
+
 /* Configuration ([31:16] ChannelB; [15:0] ChannelA)
 CHANNEL B
 [31:25] Reserved                        (Read Only)
@@ -79,6 +84,7 @@ CHANNEL A
 #define ASG_CONFIG_NOTRESERVED 0x01DF01DF
 #define ASG_CONFIG_SMRESET_CHB 22
 #define ASG_CONFIG_SMRESET_CHA 6
+
 /*Channel A/B amplitude scale and offset
     output = (data*scale)/0x2000 + offset       
 [31:30] Reserved                        (Read Only)
@@ -91,6 +97,7 @@ CHANNEL A
 #define SCALEOFF_NOTRESERVED 0x3FFF3FFF
 #define SCALEOFF_OFFSET 16
 #define SCALEOFF_SCALE  0
+
 /*Channel A/B counter wrap
 [31:30] Reserved                        (Read Only)
 [29:0]  Where counter wraps around      (R/W)
@@ -100,6 +107,7 @@ CHANNEL A
                 (16 bits for decimals)*/
 #define COUNTWRAP_CHA   0x08
 #define COUNTWRAP_CHB   0x28
+
 /*Channel A/B start offset        
 [31:30] Reserved                        (Read Only)
 [29:0]  Counter start offset            (R/W)
@@ -107,30 +115,35 @@ CHANNEL A
             (16 bits for decimals)*/
 #define STARTOFF_CHA    0x0C
 #define STARTOFF_CHB    0x2C
+
 /*Channel A/B counter step        
 [31:30] Reserved                        (Read Only)
 [29:0]  Counter step                    (R/W)
             (16 bits for decimals)*/
 #define COUNTERSTEP_CHA 0x10
 #define COUNTERSTEP_CHB 0x30
+
 /*Channel A/B buffer current read pointer         
 [31:16] Reserved                        (Read Only)
 [15:2]  Read pointer                    (R/W)
 [1:0]   Reserved                        (Read Only)*/
 #define READPOINT_CHA   0x14
 #define READPOINT_CHB   0x34
+
 /*Channel A/B number of read cycles in one burst          
 [31:16] Reserved                        (Read Only)
 [15:0]  Num of repeats of table readout (R/W) 
             (0 = infinite)*/
 #define READCYCLE_CHA   0x18
 #define READCYCLE_CHB   0x38
+
 /*Channel A/B number of burst repetitions         
 [31:16] Reserved                        (Read Only)
 [15:0]  Number of repetitions           (R/W)
             (0 = disabled)*/
 #define NUMBURST_CHA    0x1C
 #define NUMBURST_CHB    0x3C
+
 /*Channel A/B delay between burst repetitions         
 [31:0]  Delay between repetitions       (R/W)
             (Granularity = 1us)*/

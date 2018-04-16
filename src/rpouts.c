@@ -18,10 +18,7 @@
 * along with RedPitaya-DSP. If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include <sys/types.h>
-//#include <sys/stat.h>
 #include <fcntl.h>
-//#include <byteswap.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,7 +30,6 @@
 #include "RPmemmap.h"
 
 #define PAGE_SIZE ((size_t)getpagesize())
-#define PAGE_MASK ((uint64_t)(long)~(PAGE_SIZE - 1))
 #define ASG_BASE_SCALE 0x2000
 
 volatile uint8_t *OUTS_MMAP; // fpga memory mapping address
@@ -41,23 +37,24 @@ uint32_t pinsP; // pins P state
 uint32_t pinsN; // pins N state
 
 int initOuts() {
-    int OUTS_FD = open("/dev/mem", O_RDWR|O_SYNC);
-    if (OUTS_FD < 0) {
+    int memoryFileDescriptor = open("/dev/mem", O_RDWR|O_SYNC);
+    if (memoryFileDescriptor < 0) {
         fprintf(stderr, "open(/dev/mem) failed (%d)\n", errno);
         return 1;
     }
 
-    // map the whole of the RP FPGA space
     OUTS_MMAP = mmap(NULL,
         PAGE_SIZE*2048,
         PROT_READ | PROT_WRITE,
         MAP_SHARED,
-        OUTS_FD,
+        memoryFileDescriptor,
         RP_BASE_ADDR);
+
+    close(memoryFileDescriptor);
+
     if (OUTS_MMAP == MAP_FAILED) {
         fprintf(stderr, "mmap64(0x%lx@0x%x) failed (%d)\n",
             (long int)PAGE_SIZE, (uint32_t)(RP_BASE_ADDR), errno);
-        close(OUTS_FD);
         return 1;
     }
 
@@ -111,11 +108,11 @@ int initOuts() {
     // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHB) = 0x0;
     // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHA) = 0x0;
     // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHB) = 0x0;
+    
     // set analogue output signal to 0
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA) = 0;
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB) = 0;
 
-    close(OUTS_FD);
     return 0;
 }
 
@@ -183,7 +180,6 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
                 returnVal = 1;
             }
         }
-//        *addr = get_awg_chanel_mem(pin);
         *val = *action;
 
         if(*addr == NULL) {

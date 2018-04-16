@@ -20,16 +20,11 @@
 
 #include <actionTable.h>
 #include <stdio.h>
-// #include <signal.h>
 #include <string.h>
 #include <stdlib.h>
-// #include <stdint.h>
-// #include <stdbool.h>
-// #include <unistd.h>
-// #include "timeControl.h"
-// #include "gpioControl.h"
-#include "timer.h"
+
 #include "rpouts.h"
+#include "timeControl.h"
 
 
 #define MAXLINELEN 50

@@ -20,28 +20,26 @@
 #include <stdbool.h>
 
 #define MAXPRIME 999999
+#define DONTSTOP true
 
 bool isPrime(int n) {
-	int i;
-	for (i=n-1; i>1; --i){
-  		if (n%i==0) { return false; }
-  	}
-  	return true;
+    int i;
+    for (i=1; i<n; ++i){
+        if (n%i==0) { return false; }
+    }
+    return true;
 }
 
 void printPrimesUntil (int maxPrime) {
-  int k;
-
-  for(k=0; k<=maxPrime; k++){
-  	if(isPrime(k)){
-  		printf("%u\n", k);
-  	}
-  }
+    int k;
+    for(k=2; k<=maxPrime; k++){
+        if (isPrime(k)) { printf("%u\n", k); }
+    }
 }
 
 int main() {
-	while(true) {
+	do {
 		printPrimesUntil(MAXPRIME);
-	}
+	} while (DONTSTOP);
 	return 0;
 }

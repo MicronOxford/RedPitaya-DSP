@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sched.h>
-//#include "timer.h"
+
 #include "timeControl.h"
 #include "rpouts.h"
 #include "actionTable.h"
@@ -46,143 +46,138 @@ int execActionTable(const long lines);
 void sig_handler(int signo);
 void _exit(int status);
 
-/*void spinwait(int loops) {
-	int t = 0;
-	while (t != loops)
-		t += 1;
-}*/
 
 int main(int argc, char *argv[])
 {
-	printf("Hello world!\n");
+    printf("Hello world!\n");
 
-	if (argc != 2) {
+    if (argc != 2) {
         printf("num of args used was %u\n", argc);
-		printf("USAGE: dsp \"action-table-file\"\n");
-		_exit(1);
-	}
+        printf("USAGE: dsp \"action-table-file\"\n");
+        _exit(1);
+    }
 
-	initializeAll();
+    initializeAll();
 
-	long lines = createActionTable(argv[1]);
-	if(lines < 0) {
-		printf("Failed to read/create action table.\n");
-		_exit(abs(lines));
-	}
+    long lines = createActionTable(argv[1]);
+    if(lines < 0) {
+        printf("Failed to read/create action table.\n");
+        _exit(abs(lines));
+    }
 
-	// before we set ourselves to more important than the terminal, flush.
-	fflush(stdout);
+    // before we set ourselves to more important than the terminal, flush.
+    fflush(stdout);
 
-	setMaxPriority();
+    setMaxPriority();
 
-	int execstatus = execActionTable(lines);
-	if (execstatus < 0) {
-		printf("Failed to execute ActionTable (%i).\n", execstatus);
-		_exit(5);
-	}
-	printf("ActionTable executed.\n");
+    int execstatus = execActionTable(lines);
+    if (execstatus < 0) {
+        printf("Failed to execute ActionTable (%i).\n", execstatus);
+        _exit(5);
+    }
+    printf("ActionTable executed.\n");
 
-	_exit(0);
+    _exit(0);
 }
 
 /******************************************************************************/
 
 
 void initializeAll() {
-	printf("Initializing!\n");
+    printf("Initializing!\n");
 
-	actionTable = NULL;
+    actionTable = NULL;
 
-	if (initTimer() == 1){
-		printf("init timer failed\n");
-		_exit(2);
-	}
+    if (initTimer() == 1){
+        printf("init timer failed\n");
+        _exit(2);
+    }
 
-	if(initOuts() < 0){
-		fprintf(stderr, "Rp api init failed!\n");
-		_exit(2);
-	}
+    if(initOuts() < 0){
+        fprintf(stderr, "Rp api init failed!\n");
+        _exit(2);
+    }
 
-	if (signal(SIGINT, sig_handler) == SIG_ERR){
-  		printf("Signal handler failed\n");
-  	}
+    if (signal(SIGINT, sig_handler) == SIG_ERR){
+        printf("Signal handler failed\n");
+    }
 
 }
 
 
 void setMaxPriority() {
-	struct sched_param params;
-	params.sched_priority = 99;
-	if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
-		printf("Failed to set priority.\n");
-		_exit(4);
-	}
+    struct sched_param params;
+    params.sched_priority = 99;
+    if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
+        printf("Failed to set priority.\n");
+        _exit(4);
+    }
 }
 
 /* need to add error handling on the clock */
 int execActionTable(const long lines) {
-	printf("executing ActionTable\n");
-	long line;
-	// float a_volts = 0;
-	// rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
-	// rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
-	// rp_GenAmp(RP_CH_1, a_volts);
-	// rp_GenAmp(RP_CH_2, a_volts);
-	// rp_GenOutEnable(RP_CH_1);
-	// rp_GenOutEnable(RP_CH_2);
+    printf("executing ActionTable\n");
+    long line;
+    // float a_volts = 0;
+    // rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
+    // rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
+    // rp_GenAmp(RP_CH_1, a_volts);
+    // rp_GenAmp(RP_CH_2, a_volts);
+    // rp_GenOutEnable(RP_CH_1);
+    // rp_GenOutEnable(RP_CH_2);
 
-	// printf("faffing with actiontables\n");
-	// XTime now;
+    // printf("faffing with actiontables\n");
+    // XTime now;
 
-	printf("set time\n");
-	uint64_t nextTime = 0;
-	updateCurrentTime();
-	uint64_t startTime = currentTime; //updateStartTime(currentTime);
-	// XTime_SetTime(0);
-	// XTime_GetTime(&now);
+    printf("set time\n");
+    uint64_t nextTime = 0;
+    updateCurrentTime();
+    uint64_t startTime = currentTime; //updateStartTime(currentTime);
+    // XTime_SetTime(0);
+    // XTime_GetTime(&now);
 
-	for (line = 0; line < lines; line++){
-		actionLine actLine = actionTable[line];
-		nextTime = startTime + actLine.clocks;
+    for (line = 0; line < lines; line++){
+        actionLine actLine = actionTable[line];
+        nextTime = startTime + actLine.clocks;
 
 
-		if(actLine.action < 0) {
-			int pinNum = actLine.pin;
-			int inputType = abs(actLine.action);
-			if(pinNum < 0 || pinNum > 15 || inputType > 3) {
-				printf("Error not expected at line %ld\n", line);
-			}
-			volatile uint32_t * memAddr = getPinPDir();
-			if(pinNum > 7) {
-				pinNum -= 8;
-				memAddr = getPinNDir();
-			}
-			
-			while (currentTime  < nextTime) updateCurrentTime();
-			*memAddr &= ~(1 << pinNum);
-			if(inputType == 3) {
-				if((*(actLine.actAddr) & actLine.actVal)) {
-					inputType = 2;
-				} else {
-					inputType = 1;
-				}
-			}
-			if(inputType == 1) {
-				while((*(actLine.actAddr) & actLine.actVal) == 0) { }
-			} else {
-				while((*(actLine.actAddr) & actLine.actVal) != 0) { }
-			}
-			updateCurrentTime();
-			startTime = currentTime; //updateStartTime(currentTime);
-			*memAddr |= (1 << pinNum);
+        if(actLine.action < 0) {
+            int pinNum = actLine.pin;
+            int inputType = abs(actLine.action);
+            if(pinNum < 0 || pinNum > 15 || inputType > 3) {
+                printf("Error not expected at line %ld\n", line);
+            }
+            volatile uint32_t * memAddr = getPinPDir();
+            if(pinNum > 7) {
+                pinNum -= 8;
+                memAddr = getPinNDir();
+            }
+            
+            while (currentTime  < nextTime) updateCurrentTime();
+            *memAddr &= ~(1 << pinNum);
+            if(inputType == 3) {
+                if((*(actLine.actAddr) & actLine.actVal)) {
+                    inputType = 2;
+                } else {
+                    inputType = 1;
+                }
+            }
+            if(inputType == 1) {
+                while((*(actLine.actAddr) & actLine.actVal) == 0) { }
+            } else {
+                while((*(actLine.actAddr) & actLine.actVal) != 0) { }
+            }
+            updateCurrentTime();
+            startTime = currentTime; //updateStartTime(currentTime);
+            *memAddr |= (1 << pinNum);
 
-		} else {
-			while (currentTime  < nextTime) updateCurrentTime();
-			*(actLine.actAddr) = actLine.actVal;
-		}
-	}
-	
-	return 0;
+        } else {
+            while (currentTime  < nextTime) updateCurrentTime();
+            *(actLine.actAddr) = actLine.actVal;
+        }
+    }
+    
+    return 0;
 }
 
 
@@ -193,9 +188,9 @@ void sig_handler(int signo){
 }
 
 void _exit(int status) {
-	free(actionTable);
+    free(actionTable);
 
-	exitOuts();
+    exitOuts();
 
-	exit(status);
+    exit(status);
 }
