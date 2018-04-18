@@ -24,7 +24,7 @@ int initOuts();
 int exitOuts();
 void setPinsP(uint32_t pins);
 void setPinsN(uint32_t pins);
-//void setLEDs(uint32_t leds);
+void setLEDs(uint32_t leds);
 
 int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t * val);
 

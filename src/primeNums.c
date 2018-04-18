@@ -24,7 +24,7 @@
 
 bool isPrime(int n) {
     int i;
-    for (i=1; i<n; ++i){
+    for (i=1; i<n; ++i) {
         if (n%i==0) { return false; }
     }
     return true;
@@ -32,7 +32,7 @@ bool isPrime(int n) {
 
 void printPrimesUntil (int maxPrime) {
     int k;
-    for(k=2; k<=maxPrime; k++){
+    for (k=2; k<=maxPrime; k++) {
         if (isPrime(k)) { printf("%u\n", k); }
     }
 }

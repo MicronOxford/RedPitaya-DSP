@@ -30,25 +30,15 @@
 #include "rpouts.h"
 #include "actionTable.h"
 
-// #define MAXLINELEN 50
-// #define MAXHANDLERLEN 5
-// #define DELIM " "
-// #define BILLION  1000000000L;
-
-char ERRVAL[] = "/n";
-
-uint32_t INT_MAX = UINT32_MAX;
-
-
 void initializeAll();
 void setMaxPriority();
 int execActionTable(const long lines);
 void sig_handler(int signo);
 void _exit(int status);
 
+/******************************************************************************/
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     printf("Hello world!\n");
 
     if (argc != 2) {
@@ -82,7 +72,6 @@ int main(int argc, char *argv[])
 
 /******************************************************************************/
 
-
 void initializeAll() {
     printf("Initializing!\n");
 
@@ -101,7 +90,6 @@ void initializeAll() {
     if (signal(SIGINT, sig_handler) == SIG_ERR){
         printf("Signal handler failed\n");
     }
-
 }
 
 
@@ -118,61 +106,52 @@ void setMaxPriority() {
 int execActionTable(const long lines) {
     printf("executing ActionTable\n");
     long line;
-    // float a_volts = 0;
-    // rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
-    // rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
-    // rp_GenAmp(RP_CH_1, a_volts);
-    // rp_GenAmp(RP_CH_2, a_volts);
-    // rp_GenOutEnable(RP_CH_1);
-    // rp_GenOutEnable(RP_CH_2);
-
-    // printf("faffing with actiontables\n");
-    // XTime now;
 
     printf("set time\n");
     uint64_t nextTime = 0;
     updateCurrentTime();
-    uint64_t startTime = currentTime; //updateStartTime(currentTime);
-    // XTime_SetTime(0);
-    // XTime_GetTime(&now);
+    uint64_t startTime = currentTime;
 
     for (line = 0; line < lines; line++){
         actionLine actLine = actionTable[line];
         nextTime = startTime + actLine.clocks;
 
-
-        if(actLine.action < 0) {
+        if (actLine.action < 0) {
             int pinNum = actLine.pin;
             int inputType = abs(actLine.action);
-            if(pinNum < 0 || pinNum > 15 || inputType > 3) {
+            if (pinNum < 0 || pinNum > 15 || inputType > 3) {
                 printf("Error not expected at line %ld\n", line);
             }
+
             volatile uint32_t * memAddr = getPinPDir();
-            if(pinNum > 7) {
+            if (pinNum > 7) {
                 pinNum -= 8;
                 memAddr = getPinNDir();
             }
-            
-            while (currentTime  < nextTime) updateCurrentTime();
+
+            while (currentTime < nextTime) updateCurrentTime();
+
             *memAddr &= ~(1 << pinNum);
+
             if(inputType == 3) {
-                if((*(actLine.actAddr) & actLine.actVal)) {
+                if ((*(actLine.actAddr) & actLine.actVal)) {
                     inputType = 2;
                 } else {
                     inputType = 1;
                 }
             }
-            if(inputType == 1) {
-                while((*(actLine.actAddr) & actLine.actVal) == 0) { }
-            } else {
-                while((*(actLine.actAddr) & actLine.actVal) != 0) { }
-            }
-            updateCurrentTime();
-            startTime = currentTime; //updateStartTime(currentTime);
-            *memAddr |= (1 << pinNum);
 
+            if (inputType == 1) {
+                while ((*(actLine.actAddr) & actLine.actVal) == 0) { }
+            } else {
+                while ((*(actLine.actAddr) & actLine.actVal) != 0) { }
+            }
+
+            updateCurrentTime();
+            startTime = currentTime;
+            *memAddr |= (1 << pinNum);
         } else {
-            while (currentTime  < nextTime) updateCurrentTime();
+            while (currentTime < nextTime) updateCurrentTime();
             *(actLine.actAddr) = actLine.actVal;
         }
     }
@@ -180,17 +159,16 @@ int execActionTable(const long lines) {
     return 0;
 }
 
+/******************************************************************************/
 
-
-void sig_handler(int signo){
-  if (signo == SIGINT)
-    _exit(5);
+void sig_handler(int signo) {
+    if (signo == SIGINT) {
+        _exit(5);
+    }
 }
 
 void _exit(int status) {
     free(actionTable);
-
     exitOuts();
-
     exit(status);
 }

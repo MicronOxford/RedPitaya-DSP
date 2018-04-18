@@ -36,6 +36,8 @@ volatile uint8_t *OUTS_MMAP; // fpga memory mapping address
 uint32_t pinsP; // pins P state
 uint32_t pinsN; // pins N state
 
+/******************************************************************************/
+
 int initOuts() {
     int memoryFileDescriptor = open("/dev/mem", O_RDWR|O_SYNC);
     if (memoryFileDescriptor < 0) {
@@ -68,46 +70,12 @@ int initOuts() {
     pinsP = 0;
     pinsN = 0;
     // set to 0 (turn off) all LEDs
-    // *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+LED) = 0;
-
-    // printf("config - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+ASG_CONFIG));
-    // printf("scaleA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHA));
-    // printf("scaleB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHB));
-    // printf("ctwrpA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHA));
-    // printf("ctwrpB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHB));
-    // printf("startA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHA));
-    // printf("startB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHB));
-    // printf("ctstpA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHA));
-    // printf("ctstpB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHB));
-    // printf("readpA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHA));
-    // printf("readpB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHB));
-    // printf("readcA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHA));
-    // printf("readcB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHB));
-    // printf("numbrA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHA));
-    // printf("numbrB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHB));
-    // printf("dlybrA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHA));
-    // printf("dlybrB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHB));
-    // printf("outptA - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA));
-    // printf("outptB - %x\n", *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB));
+    *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+LED) = 0;
 
     // reset ASG to send continous signal
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+ASG_CONFIG) = ((1<<ASG_CONFIG_SMRESET_CHA) | (1<<ASG_CONFIG_SMRESET_CHB)) & ASG_CONFIG_NOTRESERVED;
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHA) = ((0x0 << SCALEOFF_OFFSET) | (ASG_BASE_SCALE << SCALEOFF_SCALE)) & SCALEOFF_NOTRESERVED;
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHB) = ((0x0 << SCALEOFF_OFFSET) | (ASG_BASE_SCALE << SCALEOFF_SCALE)) & SCALEOFF_NOTRESERVED;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHA) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTWRAP_CHB) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHA) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+STARTOFF_CHB) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHA) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+COUNTERSTEP_CHB) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHA) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READPOINT_CHB) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHA) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+READCYCLE_CHB) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHA) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+NUMBURST_CHB) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHA) = 0x0;
-    // *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+DELAYBURST_CHB) = 0x0;
     
     // set analogue output signal to 0
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA) = 0;
@@ -128,33 +96,33 @@ int exitOuts() {
     return 0;
 }
 
-void setPinsP(uint32_t pins){
+void setPinsP(uint32_t pins) {
     *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+OUT_PINP) = pins;
 }
 
-void setPinsN(uint32_t pins){
+void setPinsN(uint32_t pins) {
     *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+OUT_PINN) = pins;
 }
 
-/*void setLEDs(uint32_t leds) {
+void setLEDs(uint32_t leds) {
     *(volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+LED) = leds;
-}*/
-
+}
 
 /*
-pin [0-7]   =   pinP [0-7]
-pin [8-15]  =   pinN [0-7]
-pin -1 & -2 =   analogue output 1 & 2*/
+* pin -1 & -2 = analogue output 1 & 2
+* pin [0-7]   = pinP [0-7]
+* pin [8-15]  = pinN [0-7]
+*/
 int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
     int returnVal = 0;
-    if(pin < 0) {
+    if (pin < 0) {
         // analogue output
         // pin -1 = OUT1
         // pin -2 = OUT2
         // action [-8192,8191] = output [-1,1]V
         pin  = abs(pin);
 
-        switch(pin) {
+        switch (pin) {
             case 1:
                 *addr = (volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA);
                 break;
@@ -166,15 +134,15 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
                 return -1;
         }
 
-        if(*action < 0) {
-            if(*action < -8192) { // -0x2000
+        if (*action < 0) {
+            if (*action < -8192) { // -0x2000
                 printf("WARNING! Action was %i. Negative analogue output should be between -1 to -8192 (-8192 apply by default)\n", *action);
                 *action = -8192;
                 returnVal = 1;
             }
             *action += 0x4000;
         } else {
-            if(*action > 8191) { // 0x1FFF
+            if (*action > 8191) { // 0x1FFF
                 printf("WARNING! Action was %i. Positive analogue output should be between 0 to 8191 (8191 apply by default)\n", *action);
                 *action = 8191;
                 returnVal = 1;
@@ -182,7 +150,7 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
         }
         *val = *action;
 
-        if(*addr == NULL) {
+        if (*addr == NULL) {
             printf("Error processing analogue output\n");
             return -1;
         }
@@ -190,23 +158,23 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
         // digital pin out/in put (in E1)
         // pins[0-7]  = DIO[0-7]_P
         // pins[8-15] = DIO[0-7]_N
-        if(pin > 15) {
+        if (pin > 15) {
             printf("Digital pin number was bigger than 15 (%d)\n", pin);
             return -1;
         }
 
-        if(*action < 0) {
+        if (*action < 0) {
             // digital input
             // action -1 = wait for signal to be 1
             // action -2 = wait for signal to be 0
             // action -3 = wait for edge
-            if(*action < -3) {
+            if (*action < -3) {
                 printf("WARNING! Action was %i. Digital input action should be -1, -2 or -3 (-3 apply by default)\n", *action);
                 *action = -3;
                 returnVal = 1;
             }
 
-            if(pin < 8) {
+            if (pin < 8) {
                 *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+IN_PINP);
             } else {
                 pin -= 8;
@@ -218,14 +186,14 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
             // digital output
             // action 0 = clear pin   (stop signal)
             // action 1 = set pin     (send signal)
-            if(*action > 1){
+            if (*action > 1) {
                 printf("WARNING! Action was %i. Digital output action should be 1 or 0 (1 apply by default)\n", *action);
                 *action = 1;
                 returnVal = 1;
             }
 
             volatile uint32_t *pinStates;
-            if(pin < 8) {
+            if (pin < 8) {
                 *addr = (volatile uint32_t *)(OUTS_MMAP+PIN_OFFSET+OUT_PINP);
                 pinStates = &pinsP;
             } else {
@@ -234,7 +202,7 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
                 pinStates = &pinsN;
             }
 
-            if(*action) {
+            if (*action) {
                 *pinStates |= (1<<pin); 
             } else {
                 *pinStates &= !(1<<pin);

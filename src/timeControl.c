@@ -31,6 +31,8 @@
 volatile void *TIMER_MMAP;
 volatile uint32_t *clock32;
 
+/******************************************************************************/
+
 int initTimer() {
 
     int memoryFileDescriptor = open("/dev/mem", O_RDWR|O_SYNC); // open /dev/mem
@@ -45,13 +47,13 @@ int initTimer() {
         PROT_READ|PROT_WRITE,
         MAP_SHARED,
         memoryFileDescriptor,
-        TIMER_BASE_ADDR
+        TIMER_BASE_ADDRESS
     );
 
     close(memoryFileDescriptor);
 
     if (TIMER_MMAP == MAP_FAILED) {
-        printf("mmap(0x%08x) failed (errno %d)\n", (uint32_t)TIMER_BASE_ADDR, errno);
+        printf("mmap(0x%08x) failed (errno %d)\n", (uint32_t)TIMER_BASE_ADDRESS, errno);
         return 1;
     }
 

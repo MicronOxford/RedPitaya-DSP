@@ -19,7 +19,6 @@
 */
 
 #include <stdint.h>
-// #include <stdio.h>
 
 typedef struct { // struct ActionLine
     uint64_t nsec; // action time, in nsec

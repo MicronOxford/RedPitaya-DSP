@@ -26,15 +26,13 @@
 #include "rpouts.h"
 #include "timeControl.h"
 
-
 #define MAXLINELEN 50
 #define DELIM " "
 #define PRINT_LINES 0
 
-/******************************************************************************/
-
 int readActionTableLine(char *line, long lineno);
 
+/******************************************************************************/
 
 long createActionTable(char *file) {
     FILE *fp;
@@ -54,8 +52,9 @@ long createActionTable(char *file) {
 
     printf("Memory allocation for ActionTable...");
     actionTable = malloc(sizeof(actionLine)*lines);
-    if(actionTable == NULL) {
+    if (actionTable == NULL) {
         printf(" Failed\n");
+        return -1;
     }
     printf(" Completed\n");
 
@@ -65,13 +64,14 @@ long createActionTable(char *file) {
     char *linestr;
     linestr = (char *) malloc(sizeof(char)*(linelen+1));
 
-    for (lineno = 0; lineno < lines; lineno++){
+    for (lineno = 0; lineno < lines; lineno++) {
         bytes_read = getline(&linestr, &linelen, fp);
-        if (bytes_read <= 0){
-            printf("read %lu lines of action table, but was empty\n", lineno);
+        if (bytes_read <= 0) {
+            printf("ERROR - line %lu of action table was empty\n", lineno);
             free(linestr);
             return -1;
         }
+
         int readActionLineVal = readActionTableLine(linestr, lineno);
         if (readActionLineVal < 0) {
             printf("readActionTableLine failed on line number %lu\n", lineno);
@@ -81,8 +81,6 @@ long createActionTable(char *file) {
         if (readActionLineVal == 1) {
             printf("Previous warning(s) were on line number %lu\n", lineno);
         }
-        //printf("malloc for line %i, addr %p\n", lines_read, nextRow);
-        //printf("done  \n");
     }
     free(linestr);
 
@@ -95,10 +93,6 @@ int readActionTableLine(char *line, long lineno){
     char *nstime_s;
     char *pin_s;
     char *action_s;
-
-    // if(PRINT_READ_LINES) {
-    //     printf("Processing line num %lu - '%s", lineNum, line);
-    // }
 
     nstime_s = strtok(line, DELIM);  // REMINDER: first strtok call needs the str.
     if (nstime_s == NULL){
@@ -115,12 +109,13 @@ int readActionTableLine(char *line, long lineno){
         printf("action is NULL for %s\n", line);
         return -1;
     }
+
     actionTable[lineno].nsec = strtoull(nstime_s, NULL, 10);
     actionTable[lineno].pin = atoi(pin_s);
     actionTable[lineno].action = atoi(action_s);
-    // printf("row: %lu time:%llu pinP:%i pinN:%i a1:%i\n", lineno, actionTable[lineno].clocks, actionTable[lineno].pinP, actionTable[lineno].pinN, actionTable[lineno].a1);
+
     if(PRINT_LINES) {
-        printf("row: %lu time:%llu pin:%i action:%i\n",
+        printf("Line Number %lu time:%llu pin:%i action:%i\n",
             lineno,
             (unsigned long long int) actionTable[lineno].nsec,
             actionTable[lineno].pin,
