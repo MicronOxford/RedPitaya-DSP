@@ -25,6 +25,7 @@ import time
 import logging
 import traceback
 import sys
+
 logging.basicConfig()  # or your own sophisticated setup
 logging.getLogger("Pyro4").setLevel(logging.DEBUG)
 logging.getLogger("Pyro4.core").setLevel(logging.DEBUG)
@@ -39,7 +40,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 root.addHandler(ch)
 
-from PyRedPitaya.board import RedPitaya
+# from PyRedPitaya.board import RedPitaya
 
 BASE            = 0xFFFF9000
 COMM_RX_AT_ROWS = 0x10
@@ -86,32 +87,39 @@ class PrintMetaClass(type):
 class Runner(object):
 
     def __init__(self):
-        self.pid = None
-        self.filename = '/tmp/actiontable'
-        self.writtenActionTable = False
-        self.running = None
+        self.pid = None;
+        self.filename = None;
+        self.execRunnerFile = 'build/bin/dsp';
+        self.actionTablesDirectory = 'actionTables/';
+        self.writtenActionTable = False;
+        self.running = None;
 
-    def loadDemo(self, dt):
+    def loadDemo(self, deltaTime):
+        self.filename = self.actionTablesDirectory + 'actTblTest.txt';
         with open(self.filename, 'w') as f:
-            n = 100000
-            t = 0
-            for l in range(n):
-                print('{} {} {} {} {}'.format( t, 0, 0, 0, l*4000./n ), file=f)
-                t += dt
-                print('{} {} {} {} {}'.format( t, 0x000000FF, 0x000000FF, 4000, l*4000./n ), file=f)
-                t += dt
-        self.writtenActionTable = True
+            demoDigitalPin = 5;
+            demoAnalogueOutput = -1;
+            maxOfLines = 100000;
+            time = 0;
+            for line in range(maxOfLines):
+                print('{} {} {}'.format(time, demoDigitalPin, line%2), file=f);
+                print('{} {} {}'.format(time, demoAnalogueOutput, line*8000./maxOfLines), file=f);
+                time += deltaTime*1e3;
+        self.writtenActionTable = True;
 
     def load(self, actiontable):
-        with open(self.filename, 'w') as f:
-            for row in actiontable:
-                time, digitals, a1, a2 = row
-                time = int(time*1e3) # convert to ns
-                dP, dN = digitals & int('11111111', 2), (digitals & int('1111111100000000', 2)) >> 8
-                finalrow = time, dP, dN, a1, a2
-                print('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
-                print('{} {} {} {} {}'.format(*finalrow), file=f)
-        self.writtenActionTable = True
+        self.filename = self.actionTablesDirectory + 'actTbl-' + time.strftime("%Y%m%d-%H:%M:%S")+".txt";
+        try:
+            with open(self.filename, 'w') as f:
+                for row in actiontable:
+                    actTime, pinNumber, actionValue = row;
+                    timeNanoSec = int(actTime*1e3); # convert to ns
+                    finalRow = timeNanoSec, pinNumber, actionValue;
+                    print('time:{} pin:{} action:{}'.format(*finalRow));
+                    print('{} {} {}'.format(*finalRow), file=f);
+            self.writtenActionTable = True;
+        except Exception as caughtException:
+            print(caughtException);
 
     def abort(self):
         if self.pid:
@@ -120,18 +128,19 @@ class Runner(object):
 
     def start(self):
         if self.writtenActionTable:
-            cmd = ['dsp', self.filename]
-            print('calling', cmd)
-            proc = subprocess.Popen(cmd)
-            self.pid = proc.pid
-            return proc
+            # comandLine = ['dsp', self.filename];
+            comandLine = [self.execRunnerFile, self.filename];
+            print('calling', comandLine);
+            process = subprocess.Popen(comandLine);
+            self.pid = process.pid;
+            return process;
         else:
-            raise Exception("please write the action table!")
+            raise Exception("Please write the action table!");
 
     def stop(self):
         self.abort()
 
-
+# @Pyro4.expose # needed in newer versions
 class rpServer(object):
 
     __metaclass__ = PrintMetaClass
@@ -145,14 +154,14 @@ class rpServer(object):
         self.analogB = []
 
         self.DSPRunner = Runner()
-        self.board = RedPitaya()
+        # self.board = RedPitaya()
 
         # single value output
-        self.board.asga.counter_wrap = self.board.asga.counter_step
-        self.board.asgb.counter_wrap = self.board.asgb.counter_step
+        # self.board.asga.counter_wrap = self.board.asga.counter_step
+        # self.board.asgb.counter_wrap = self.board.asgb.counter_step
 
-        self.board.hk.expansion_connector_direction_P = 0xFF # set all pins to out
-        self.board.hk.expansion_connector_direction_N = 0xFF
+        # self.board.hk.expansion_connector_direction_P = 0xFF # set all pins to out
+        # self.board.hk.expansion_connector_direction_N = 0xFF
 
         self.clientConnection = None
 
@@ -162,20 +171,21 @@ class rpServer(object):
     def Abort(self):
         # kill the server process
         self.DSPRunner.abort()
-        self.board.hk.expansion_connector_output_P = 0
-        self.board.hk.expansion_connector_output_N = 0
+        # self.board.hk.expansion_connector_output_P = 0
+        # self.board.hk.expansion_connector_output_N = 0
 
     def MoveAbsoluteADU(self, aline, aduPos):
         # probably just use the python lib
         # volts to ADU's for the DSP card: int(pos * 6553.6))
         # Bu we won't be hooked up to the stage?
-        if aline == 0:
-            self.board.asga.data = [aduPos]
-        if aline == 1:
-            self.board.asgb.data = [aduPos]
-        else:
-            print("aline {}>1".format(aline))
-            self.fakeALines[aline] = aduPos
+        # if aline == 0:
+        #     self.board.asga.data = [aduPos]
+        # if aline == 1:
+        #     self.board.asgb.data = [aduPos]
+        # else:
+        #     print("aline {}>1".format(aline))
+        #     self.fakeALines[aline] = aduPos
+        print("NOT IMPLEMENTED");
 
     def arcl(self, cameras, lightTimePairs):
         if lightTimePairs:
@@ -206,54 +216,15 @@ class rpServer(object):
             self.WriteDigital(cameras) # "expose"
             self.WriteDigital(0)
 
-    def profileSet(self, profileStr, digitals, *analogs):
-        print("profileset called with")
-        print("analog0", analogs[0], "times", zip(*analogs[0])[0], "vals", zip(*analogs[0])[1])
-        # This is downloading the action table
-        # digitals is numpy.zeros((len(times), 2), dtype = numpy.uint32),
-        # starting at 0 -> [times for digital signal changes, digital lines]
-        # analogs is a list of analog lines and the values to put on them at each time
-        # digitals = list of lists. sublist is a time, line pair
-        # then 4 analog lines. also list of time: value pairs.
-        Dtimes, Dvals = zip(*digitals)
-        if len(analogs) > 0:
-            Atimes, Avals = zip(*analogs[0])
-        else:
-            Atimes, Avals = [], []
-        if len(analogs) > 0:
-            Btimes, Bvals = zip(*analogs[1])
-        else:
-            Btimes, Bvals = [], []
-
-        Dtimes = list(Dtimes)
-        Atimes = list(Atimes)
-        Btimes = list(Btimes)
-
-        print("dt:{},\n at:{},\n bt:{}".format(Dtimes, Atimes, Btimes))
-        print()
-        print()
-        print("dv:{},\n av:{},\n bv:{}".format(Dvals, Avals, Bvals))
-
-        times, digitals, analogA, analogB = [], [], [], []
-        times = sorted(list(set(Dtimes+Atimes+Btimes)))
-        for timepoint in times:
-            self.times.append(timepoint)
-            for outline, inval, timesForLine in [(digitals, Dvals, Dtimes),
-                                                 (analogA,  Avals, Atimes),
-                                                 (analogB,  Bvals, Btimes)]:
-                if timepoint in timesForLine:
-                    outline.append(inval[timesForLine.index(timepoint)])
-                else:
-                    prevValue = outline[-1] if outline else 0
-                    outline.append(prevValue) # the last value
-
-        self.actiontable = zip(times, digitals, analogA, analogB)
-        print("sort")
-        self.actiontable.sort()
+    # def profileSet(self, profileStr, digitals, *analogs):
+    def setProfile(self, times, pins, values):
+        print('Setting action table...', end=' ');
+        self.actiontable = zip(times, pins, values);
+        print('done');
 
 
     def DownloadProfile(self): # This is saving the action table
-        self.DSPRunner.load(self.actiontable)
+        self.DSPRunner.load(self.actiontable);
 
     def InitProfile(self, numReps):
         # I'm pretty sure this does not zero the prev values.
@@ -262,49 +233,57 @@ class rpServer(object):
         pass
 
     def trigCollect(self):
-        process = self.DSPRunner.start()
-        process.wait()
-        retVal = (100, [self.ReadPosition(0), self.ReadPosition(1), 0, 0])
-        self.clientConnection.receiveData("DSP done", retVal)
+        process = self.DSPRunner.start();
+        process.wait();
+        # retVal = (100, [self.ReadPosition(0), self.ReadPosition(1), 0, 0])
+        # self.clientConnection.receiveData("DSP done", retVal)
         # needs to block on the dsp finishing.
 
     def ReadPosition(self, axis):
-        if axis == 0:
-            return int(self.board.asga.data[0])
-        elif axis == 1:
-            return int(self.board.asgb.data[0])
-        else:
-            return self.fakeALines[axis]
+        # if axis == 0:
+        #     return int(self.board.asga.data[0])
+        # elif axis == 1:
+        #     return int(self.board.asgb.data[0])
+        # else:
+        #     return self.fakeALines[axis]
+        print("NOT IMPLEMENTED");
 
     def WriteDigital(self, level):
-        dP, dN = level & int('11111111', 2), (level & int('1111111100000000', 2)) >> 8
-        self.board.hk.led = level & int('11111111', 2) # 7 led's
-        self.board.hk.expansion_connector_output_P = dP
-        self.board.hk.expansion_connector_output_N = dN
+        # dP, dN = level & int('11111111', 2), (level & int('1111111100000000', 2)) >> 8
+        # self.board.hk.led = level & int('11111111', 2) # 7 led's
+        # self.board.hk.expansion_connector_output_P = dP
+        # self.board.hk.expansion_connector_output_N = dN
+        print("NOT IMPLEMENTED");
 
     def demo(self, dt):
-        self.DSPRunner.loadDemo(dt)
-        self.DSPRunner.start()
+        print("DeMo");
+        self.DSPRunner.loadDemo(dt);
+        process = self.DSPRunner.start();
+        process.wait();
 
     def receiveClient(self, uri):
         self.clientConnection = Pyro4.Proxy(uri)
         print(uri)
 
+
 if __name__ == '__main__':
-    dsp = rpServer()
+    dsp = rpServer();
+    dspPort = 7000;
+    dspHost = '10.42.0.175';
 
-    print("providing dsp.d() as [pyroDSP] on port 7766")
-    print("Started program at",time.strftime("%A, %B %d, %I:%M %p"))
+    print("Started program at",time.strftime("%A, %B %d, %I:%M %p"));
 
-    Pyro4.config.SERIALIZER = 'pickle'
-    Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
+    Pyro4.config.SERIALIZER = 'pickle';
+    Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle');
 
     while True:
         try:
-            daemon = Pyro4.Daemon(port = 7000, host = '192.168.1.100')
-            break
+            dspDaemon = Pyro4.Daemon(port = dspPort, host = dspHost);
+            break;
         except Exception as e:
-            print("Socket fail", e)
-            time.sleep(1)
+            print("Socket fail", e);
+            time.sleep(1);
+
+    print('Providing dsp.d() as [pyroDSP] at {}'.format(dspDaemon.locationStr));
     Pyro4.Daemon.serveSimple({dsp: 'pyroDSP'},
-            daemon = daemon, ns = False, verbose = True)
+        daemon = dspDaemon, ns = False, verbose = True);
