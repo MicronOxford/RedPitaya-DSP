@@ -21,8 +21,8 @@
 
 #define TIMER_BASE_ADDRESS      0xF8F00000
 #define TIMER_LOW_OFFSET        0x200
-#define TIMER_HIGH_OFFSET       0x240
-// #define TIMER_CONTROL_OFFSET    0x280
+#define TIMER_HIGH_OFFSET       0x204
+// #define TIMER_CONTROL_OFFSET    0x208
 #define NANOSEC_PER_TICK        4
 
 uint64_t currentTime;

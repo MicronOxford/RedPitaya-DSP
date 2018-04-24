@@ -155,7 +155,7 @@ int execActionTable(const long lines) {
             *(actLine.actAddr) = actLine.actVal;
         }
     }
-    
+
     return 0;
 }
 
