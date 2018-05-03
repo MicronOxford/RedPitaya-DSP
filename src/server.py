@@ -21,31 +21,12 @@ import subprocess
 import threading
 import os
 import time
+from mmap import mmap
+import struct
 
 import logging
 import traceback
 import sys
-
-logging.basicConfig()  # or your own sophisticated setup
-logging.getLogger("Pyro4").setLevel(logging.DEBUG)
-logging.getLogger("Pyro4.core").setLevel(logging.DEBUG)
-# ... set level of other logger names as desired ...
-
-root = logging.getLogger()
-root.setLevel(logging.DEBUG)
-
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-root.addHandler(ch)
-
-# from PyRedPitaya.board import RedPitaya
-
-BASE            = 0xFFFF9000
-COMM_RX_AT_ROWS = 0x10
-COMM_RX_AT_FLAG = 0x14
-COMM_RX_AT      = 0x18
 
 def bin(s):
     ''' Returns the set bits in a positive int as a str.'''
@@ -83,6 +64,42 @@ class PrintMetaClass(type):
             newClassDict[attributeName] = attribute
         return type.__new__(meta, classname, bases, newClassDict)
 
+class RedPitayaBoard(object):
+
+    offset_init = 0x40000000
+    offset_size = 0x4022FFFF - offset_init
+
+    direct_pinP = 0x10
+    direct_pinN = 0x14
+    out_pinP    = 0x18
+    out_pinN    = 0x1C
+    in_pinP     = 0x20
+    in_pinN     = 0x24
+    led         = 0x30
+
+    asg_chanelA = 0x210000
+    asg_chanelB = 0x220000
+
+    def __init__(self):
+        with open('/dev/mem', 'r+b') as f:
+            self.mem = mmap(f.fileno(), self.offset_size,
+                offset = self.offset_init);
+
+    def read(self, offset, safe = True):
+        if safe and offset not in [self.direct_pinP, self.direct_pinN,
+        self.out_pinP, self.out_pinN, self.in_pinP, self.in_pinN,
+        self.led, self.asg_chanelA, self.asg_chanelB]:
+            raise NameError('offset {0:#x} not implemented'.format(offset));
+
+        return struct.unpack('<L', self.mem[offset:offset+4])[0];
+
+    def write(self, offset, value, safe = True):
+        if safe and offset not in [self.direct_pinP, self.direct_pinN,
+        self.out_pinP, self.out_pinN, self.in_pinP, self.in_pinN,
+        self.led, self.asg_chanelA, self.asg_chanelB]:
+            raise NameError('offset {0:#x} not implemented'.format(offset));
+
+        self.mem[offset:offset+4] = struct.pack('<L', value);
 
 class Runner(object):
 
@@ -108,7 +125,7 @@ class Runner(object):
         self.writtenActionTable = True;
 
     def load(self, actiontable):
-        self.filename = self.actionTablesDirectory + 'actTbl-' + time.strftime("%Y%m%d-%H:%M:%S")+".txt";
+        self.filename = self.actionTablesDirectory + 'actTbl-' + time.strftime('%Y%m%d-%H:%M:%S')+'.txt';
         try:
             with open(self.filename, 'w') as f:
                 for row in actiontable:
@@ -128,64 +145,63 @@ class Runner(object):
 
     def start(self):
         if self.writtenActionTable:
-            # comandLine = ['dsp', self.filename];
             comandLine = [self.execRunnerFile, self.filename];
-            print('calling', comandLine);
+            print('calling {}'.format(comandLine));
             process = subprocess.Popen(comandLine);
             self.pid = process.pid;
             return process;
         else:
-            raise Exception("Please write the action table!");
+            raise Exception('Please write the action table!');
 
     def stop(self):
-        self.abort()
+        self.abort();
 
-# @Pyro4.expose # needed in newer versions
+# @Pyro4.expose # needed in recent versions
 class rpServer(object):
 
     __metaclass__ = PrintMetaClass
 
     def __init__(self):
-        self.pid = None
-        self.name = None
-        self.times = []
-        self.digitals = []
-        self.analogA = []
-        self.analogB = []
+        self.pid = None;
+        self.name = None;
+        self.times = [];
+        self.digitals = [];
+        self.analogA = [];
+        self.analogB = [];
 
-        self.DSPRunner = Runner()
-        # self.board = RedPitaya()
+        self.DSPRunner = Runner();
+        self.board = RedPitayaBoard();
 
         # single value output
         # self.board.asga.counter_wrap = self.board.asga.counter_step
         # self.board.asgb.counter_wrap = self.board.asgb.counter_step
 
-        # self.board.hk.expansion_connector_direction_P = 0xFF # set all pins to out
-        # self.board.hk.expansion_connector_direction_N = 0xFF
+        # set all pins to out
+        self.board.write(RedPitayaBoard.direct_pinP, 0xFF);
+        self.board.write(RedPitayaBoard.direct_pinN, 0xFF);
 
-        self.clientConnection = None
+        self.clientConnection = None;
 
-        self.fakeALines = [0, 0, 0, 0]
+        self.fakeALines = [0, 0, 0, 0];
 
     # The dsp has a handler for SIGINT that cleans up
     def Abort(self):
         # kill the server process
-        self.DSPRunner.abort()
-        # self.board.hk.expansion_connector_output_P = 0
-        # self.board.hk.expansion_connector_output_N = 0
+        self.DSPRunner.abort();
+        self.board.write(RedPitayaBoard.out_pinP, 0);
+        self.board.write(RedPitayaBoard.out_pinN, 0);
 
     def MoveAbsoluteADU(self, aline, aduPos):
         # probably just use the python lib
         # volts to ADU's for the DSP card: int(pos * 6553.6))
-        # Bu we won't be hooked up to the stage?
-        # if aline == 0:
-        #     self.board.asga.data = [aduPos]
-        # if aline == 1:
-        #     self.board.asgb.data = [aduPos]
-        # else:
-        #     print("aline {}>1".format(aline))
-        #     self.fakeALines[aline] = aduPos
-        print("NOT IMPLEMENTED");
+        # But we won't be hooked up to the stage?
+        if aline == 0:
+            self.board.write(RedPitayaBoard.asg_chanelA, aduPos);
+        elif aline == 1:
+            self.board.write(RedPitayaBoard.asg_chanelB, aduPos);
+        else:
+            print('aline {}>1'.format(aline));
+            self.fakeALines[aline] = aduPos;
 
     def arcl(self, cameras, lightTimePairs):
         if lightTimePairs:
@@ -195,7 +211,7 @@ class rpServer(object):
             lightTimePairs.sort(key = lambda a: a[1])
             curDigital = cameras + sum([p[0] for p in lightTimePairs])
             self.WriteDigital(curDigital)
-            print("Start with", curDigital)
+            print('Start with {}'.format(curDigital))
             totalTime = lightTimePairs[-1][1]
             curTime = 0
             for line, runTime in lightTimePairs:
@@ -206,11 +222,11 @@ class rpServer(object):
                 curDigital -= line
                 self.WriteDigital(curDigital)
                 curTime += waitTime
-                print("At",curTime,"set",curDigital)
+                print('At {} set {}'.format(curTime, curDigital))
             # Wait for the final timepoint to close shutters.
             if totalTime - curTime:
                 busy_wait( (totalTime - curTime)/1000. )
-            print("Finally at",totalTime,"set",0)
+            print('Finally at {} set {}'.format(totalTime, 0))
             self.WriteDigital(0)
         else:
             self.WriteDigital(cameras) # "expose"
@@ -232,38 +248,40 @@ class rpServer(object):
         #self.times, self.digitals, self.analogA, self.analogB = [], [], [], []
         pass
 
-    def trigCollect(self):
+    def trigCollect(self, wait = True):
         process = self.DSPRunner.start();
-        process.wait();
-        # retVal = (100, [self.ReadPosition(0), self.ReadPosition(1), 0, 0])
-        # self.clientConnection.receiveData("DSP done", retVal)
+        if wait:
+            process.wait();
+        if self.clientConnection:
+            retVal = (100, [self.ReadPosition(0), self.ReadPosition(1), 0, 0]);
+            self.clientConnection.receiveData('DSP done', retVal);
         # needs to block on the dsp finishing.
 
     def ReadPosition(self, axis):
-        # if axis == 0:
-        #     return int(self.board.asga.data[0])
-        # elif axis == 1:
-        #     return int(self.board.asgb.data[0])
-        # else:
-        #     return self.fakeALines[axis]
-        print("NOT IMPLEMENTED");
+        if axis == 0:
+            return int(self.board.read(RedPitayaBoard.asg_chanelA));
+        elif axis == 1:
+            return int(self.board.read(RedPitayaBoard.asg_chanelB));
+        else:
+            return self.fakeALines[axis];
 
     def WriteDigital(self, level):
-        # dP, dN = level & int('11111111', 2), (level & int('1111111100000000', 2)) >> 8
-        # self.board.hk.led = level & int('11111111', 2) # 7 led's
-        # self.board.hk.expansion_connector_output_P = dP
-        # self.board.hk.expansion_connector_output_N = dN
-        print("NOT IMPLEMENTED");
+        dP, dN = level & int('11111111', 2), (level & int('1111111100000000', 2)) >> 8
+        #self.board.write(RedPitayaBoard.led, level & int('11111111', 2)); # 7 led's
+        self.board.write(RedPitayaBoard.out_pinP, dP);
+        self.board.write(RedPitayaBoard.out_pinN, dN);
+
+    def writeLed(self, leds):
+        self.board.write(RedPitayaBoard.led, leds);
 
     def demo(self, dt):
-        print("DeMo");
         self.DSPRunner.loadDemo(dt);
         process = self.DSPRunner.start();
         process.wait();
 
     def receiveClient(self, uri):
-        self.clientConnection = Pyro4.Proxy(uri)
-        print(uri)
+        self.clientConnection = Pyro4.Proxy(uri);
+        print(uri);
 
 
 if __name__ == '__main__':
@@ -271,7 +289,7 @@ if __name__ == '__main__':
     dspPort = 7000;
     dspHost = '10.42.0.175';
 
-    print("Started program at",time.strftime("%A, %B %d, %I:%M %p"));
+    print('Started program at {}'.format(time.strftime('%A, %B %d, %I:%M %p')));
 
     Pyro4.config.SERIALIZER = 'pickle';
     Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle');
@@ -281,7 +299,7 @@ if __name__ == '__main__':
             dspDaemon = Pyro4.Daemon(port = dspPort, host = dspHost);
             break;
         except Exception as e:
-            print("Socket fail", e);
+            print('Socket fail {}'.format(e));
             time.sleep(1);
 
     print('Providing dsp.d() as [pyroDSP] at {}'.format(dspDaemon.locationStr));
