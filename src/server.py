@@ -156,8 +156,8 @@ class Runner(object):
     def stop(self):
         self.abort();
 
-# @Pyro4.expose # needed in recent versions
-class rpServer(object):
+@Pyro4.expose
+class RedPitayaServer(object):
 
     __metaclass__ = PrintMetaClass
 
@@ -169,7 +169,7 @@ class rpServer(object):
         self.analogA = [];
         self.analogB = [];
 
-        self.DSPRunner = Runner();
+        self.runner = Runner();
         self.board = RedPitayaBoard();
 
         # single value output
@@ -184,14 +184,66 @@ class rpServer(object):
 
         self.fakeALines = [0, 0, 0, 0];
 
-    # The dsp has a handler for SIGINT that cleans up
-    def Abort(self):
+    def abort(self):
         # kill the server process
-        self.DSPRunner.abort();
-        self.board.write(RedPitayaBoard.out_pinP, 0);
-        self.board.write(RedPitayaBoard.out_pinN, 0);
+        self.runner.abort();
+        # The RedPitaya-DSP has a handler for SIGINT that cleans up
 
-    def MoveAbsoluteADU(self, aline, aduPos):
+    def arcl(self, cameras, lightTimePairs):
+        if lightTimePairs:
+            # Expose all lights at the start, then drop them out
+            # as their exposure times come to an end.
+            # Sort so that the longest exposure time comes last.
+            lightTimePairs.sort(key = lambda a: a[1])
+            curDigital = cameras + sum([p[0] for p in lightTimePairs])
+            self.writeDigital(curDigital)
+            print('Start with {}'.format(curDigital))
+            totalTime = lightTimePairs[-1][1]
+            curTime = 0
+            for line, runTime in lightTimePairs:
+                # Wait until we need to open this shutter.
+                waitTime = runTime - curTime
+                if waitTime > 0:
+                    busy_wait(waitTime/1000.)
+                curDigital -= line
+                self.writeDigital(curDigital)
+                curTime += waitTime
+                print('At {} set {}'.format(curTime, curDigital))
+            # Wait for the final timepoint to close shutters.
+            if totalTime - curTime:
+                busy_wait( (totalTime - curTime)/1000. )
+            print('Finally at {} set {}'.format(totalTime, 0))
+            self.writeDigital(0)
+        else:
+            self.writeDigital(cameras) # "expose"
+            self.writeDigital(0)
+
+    # def profileSet(self, profileStr, digitals, *analogs):
+    def setProfile(self, times, pins, values):
+        print('Setting action table...', end=' ');
+        self.actiontable = zip(times, pins, values);
+        print('done');
+
+
+    def downloadProfile(self): # This is saving the action table
+        self.runner.load(self.actiontable);
+
+    def initProfile(self, numReps):
+        # I'm pretty sure this does not zero the prev values.
+        # is it for allocating space?
+        #self.times, self.digitals, self.analogA, self.analogB = [], [], [], []
+        pass
+
+    def trigCollect(self, wait = True):
+        process = self.runner.start();
+        if wait:
+            process.wait();
+        if self.clientConnection:
+            retVal = (100, [self.readPosition(0), self.readPosition(1), 0, 0]);
+            self.clientConnection.receiveData('DSP done', retVal);
+        # needs to block on the dsp finishing.
+
+    def moveAbsoluteADU(self, aline, aduPos):
         # probably just use the python lib
         # volts to ADU's for the DSP card: int(pos * 6553.6))
         # But we won't be hooked up to the stage?
@@ -203,61 +255,7 @@ class rpServer(object):
             print('aline {}>1'.format(aline));
             self.fakeALines[aline] = aduPos;
 
-    def arcl(self, cameras, lightTimePairs):
-        if lightTimePairs:
-            # Expose all lights at the start, then drop them out
-            # as their exposure times come to an end.
-            # Sort so that the longest exposure time comes last.
-            lightTimePairs.sort(key = lambda a: a[1])
-            curDigital = cameras + sum([p[0] for p in lightTimePairs])
-            self.WriteDigital(curDigital)
-            print('Start with {}'.format(curDigital))
-            totalTime = lightTimePairs[-1][1]
-            curTime = 0
-            for line, runTime in lightTimePairs:
-                # Wait until we need to open this shutter.
-                waitTime = runTime - curTime
-                if waitTime > 0:
-                    busy_wait(waitTime/1000.)
-                curDigital -= line
-                self.WriteDigital(curDigital)
-                curTime += waitTime
-                print('At {} set {}'.format(curTime, curDigital))
-            # Wait for the final timepoint to close shutters.
-            if totalTime - curTime:
-                busy_wait( (totalTime - curTime)/1000. )
-            print('Finally at {} set {}'.format(totalTime, 0))
-            self.WriteDigital(0)
-        else:
-            self.WriteDigital(cameras) # "expose"
-            self.WriteDigital(0)
-
-    # def profileSet(self, profileStr, digitals, *analogs):
-    def setProfile(self, times, pins, values):
-        print('Setting action table...', end=' ');
-        self.actiontable = zip(times, pins, values);
-        print('done');
-
-
-    def DownloadProfile(self): # This is saving the action table
-        self.DSPRunner.load(self.actiontable);
-
-    def InitProfile(self, numReps):
-        # I'm pretty sure this does not zero the prev values.
-        # is it for allocating space?
-        #self.times, self.digitals, self.analogA, self.analogB = [], [], [], []
-        pass
-
-    def trigCollect(self, wait = True):
-        process = self.DSPRunner.start();
-        if wait:
-            process.wait();
-        if self.clientConnection:
-            retVal = (100, [self.ReadPosition(0), self.ReadPosition(1), 0, 0]);
-            self.clientConnection.receiveData('DSP done', retVal);
-        # needs to block on the dsp finishing.
-
-    def ReadPosition(self, axis):
+    def readPosition(self, axis):
         if axis == 0:
             return int(self.board.read(RedPitayaBoard.asg_chanelA));
         elif axis == 1:
@@ -265,18 +263,30 @@ class rpServer(object):
         else:
             return self.fakeALines[axis];
 
-    def WriteDigital(self, level):
-        dP, dN = level & int('11111111', 2), (level & int('1111111100000000', 2)) >> 8
-        #self.board.write(RedPitayaBoard.led, level & int('11111111', 2)); # 7 led's
-        self.board.write(RedPitayaBoard.out_pinP, dP);
-        self.board.write(RedPitayaBoard.out_pinN, dN);
+    def writeDigital(self, level, value):
+        toWrite = value & int('11111111', 2);
+        if level == 0:
+            self.board.write(RedPitayaBoard.out_pinP, toWrite);
+        elif level == 1:
+            self.board.write(RedPitayaBoard.out_pinN, toWrite);
+
+    def readDigital(self, level):
+        if level == 0:
+            return self.board.read(RedPitayaBoard.out_pinP);
+        elif level == 1:
+            return self.board.read(RedPitayaBoard.out_pinN);
+        else:
+            return None;
 
     def writeLed(self, leds):
         self.board.write(RedPitayaBoard.led, leds);
 
+    def readLed(self, leds):
+        self.board.read(RedPitayaBoard.led);
+
     def demo(self, dt):
-        self.DSPRunner.loadDemo(dt);
-        process = self.DSPRunner.start();
+        self.runner.loadDemo(dt);
+        process = self.runner.start();
         process.wait();
 
     def receiveClient(self, uri):
@@ -285,7 +295,7 @@ class rpServer(object):
 
 
 if __name__ == '__main__':
-    dsp = rpServer();
+    dsp = RedPitayaServer();
     dspPort = 7000;
     dspHost = '10.42.0.175';
 
