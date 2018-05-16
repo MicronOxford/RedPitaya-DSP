@@ -22,8 +22,8 @@ OS=http://clade.pierre.free.fr/python-on-red-pitaya/ecosystem-0.92-0-devbuild.zi
 #PREFIX=arm-linux-gnueabi-
 CC=$(PREFIX)gcc
 
-PYTHONLIBS=build/usr/lib/Python2.7
-PYTHONPACKAGES=PyRedPitaya Pyro4==4.28 serpent
+#PYTHONLIBS=build/usr/lib/Python2.7
+PYTHONPACKAGES= Pyro4 serpent
 
 all: dsp server rpos pythonpackages
 
@@ -69,9 +69,8 @@ rpos: tmp build
 	unzip tmp/ecosystem-0.92-0-devbuild.zip -d build/
 
 pythonpackages: rpos
-	# we need pyro and he red pitaya libs, --no-deps as they are both satisfied
-	# allreday on the RP but pip could not know this
-	pip install -t $(PYTHONLIBS) --no-dependencies $(PYTHONPACKAGES)
+	# we need pyro and serpent
+	pip3 install --upgrade $(PYTHONPACKAGES)
 
 atest: Atest.c
 	$(CC) $(CFLAGS) -O0 Atest.c -lm -o atest $(LNK)
