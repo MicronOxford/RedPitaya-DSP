@@ -83,60 +83,64 @@ class RedPitayaBoard(object):
     def __init__(self):
         with open('/dev/mem', 'r+b') as f:
             self.mem = mmap(f.fileno(), self.offset_size,
-                offset = self.offset_init);
+                offset = self.offset_init)
 
     def read(self, offset, safe = True):
         if safe and offset not in [self.direct_pinP, self.direct_pinN,
         self.out_pinP, self.out_pinN, self.in_pinP, self.in_pinN,
         self.led, self.asg_chanelA, self.asg_chanelB]:
-            raise NameError('offset {0:#x} not implemented'.format(offset));
+            raise NameError('offset {0:#x} not implemented'.format(offset))
 
-        return struct.unpack('<L', self.mem[offset:offset+4])[0];
+        return struct.unpack('<L', self.mem[offset:offset+4])[0]
 
     def write(self, offset, value, safe = True):
         if safe and offset not in [self.direct_pinP, self.direct_pinN,
         self.out_pinP, self.out_pinN, self.in_pinP, self.in_pinN,
         self.led, self.asg_chanelA, self.asg_chanelB]:
-            raise NameError('offset {0:#x} not implemented'.format(offset));
+            raise NameError('offset {0:#x} not implemented'.format(offset))
 
-        self.mem[offset:offset+4] = struct.pack('<L', value);
+        self.mem[offset:offset+4] = struct.pack('<L', value)
 
 class Runner(object):
 
     def __init__(self):
-        self.pid = None;
-        self.filename = None;
-        self.execRunnerFile = 'build/bin/dsp';
-        self.actionTablesDirectory = 'actionTables/';
-        self.writtenActionTable = False;
-        self.running = None;
+        self.pid = None
+        self.filename = None
+        self.execRunnerFile = 'build/bin/dsp'
+        self.actionTablesDirectory = 'actionTables/'
+        self.writtenActionTable = False
+        self.running = None
 
     def loadDemo(self, deltaTime):
-        self.filename = self.actionTablesDirectory + 'actTblTest.txt';
+        self.filename = self.actionTablesDirectory + 'actTblTest.txt'
         with open(self.filename, 'w') as f:
-            demoDigitalPin = 5;
-            demoAnalogueOutput = -1;
-            maxOfLines = 100000;
-            time = 0;
+            demoDigitalPin = 5
+            demoAnalogueOutput = -1
+            maxOfLines = 100000
+            time = 0
             for line in range(maxOfLines):
-                print('{} {} {}'.format(time, demoDigitalPin, line%2), file=f);
-                print('{} {} {}'.format(time, demoAnalogueOutput, line*8000./maxOfLines), file=f);
-                time += deltaTime*1e3;
-        self.writtenActionTable = True;
+                print('{} {} {}'.format(time, demoDigitalPin, line%2), file=f)
+                print('{} {} {}'.format(time,
+                    demoAnalogueOutput, line*8000./maxOfLines), file=f)
+                # print('{} {} {}\n{} {} {}'.format(time, demoDigitalPin, line%2,
+                #     time, demoAnalogueOutput, line*8000./maxOfLines), file=f)
+                    time += deltaTime*1e3
+        self.writtenActionTable = True
 
     def load(self, actiontable):
-        self.filename = self.actionTablesDirectory + 'actTbl-' + time.strftime('%Y%m%d-%H:%M:%S')+'.txt';
+        self.filename = self.actionTablesDirectory + 'actTbl-' +
+            time.strftime('%Y%m%d-%H:%M:%S') + '.txt'
         try:
             with open(self.filename, 'w') as f:
                 for row in actiontable:
-                    actTime, pinNumber, actionValue = row;
-                    timeNanoSec = int(actTime*1e3); # convert to ns
-                    finalRow = timeNanoSec, pinNumber, actionValue;
-                    print('time:{} pin:{} action:{}'.format(*finalRow));
-                    print('{} {} {}'.format(*finalRow), file=f);
-            self.writtenActionTable = True;
+                    actTime, pinNumber, actionValue = row
+                    timeNanoSec = int(actTime*1e3) # convert to ns
+                    finalRow = timeNanoSec, pinNumber, actionValue
+                    print('time:{} pin:{} action:{}'.format(*finalRow))
+                    print('{} {} {}'.format(*finalRow), file=f)
+            self.writtenActionTable = True
         except Exception as caughtException:
-            print(caughtException);
+            print(caughtException)
 
     def abort(self):
         if self.pid:
@@ -145,16 +149,16 @@ class Runner(object):
 
     def start(self):
         if self.writtenActionTable:
-            comandLine = [self.execRunnerFile, self.filename];
-            print('calling {}'.format(comandLine));
-            process = subprocess.Popen(comandLine);
-            self.pid = process.pid;
-            return process;
+            comandLine = [self.execRunnerFile, self.filename]
+            print('calling {}'.format(comandLine))
+            process = subprocess.Popen(comandLine)
+            self.pid = process.pid
+            return process
         else:
-            raise Exception('Please write the action table!');
+            raise Exception('Please write the action table!')
 
     def stop(self):
-        self.abort();
+        self.abort()
 
 @Pyro4.expose
 class RedPitayaServer(object):
@@ -162,31 +166,31 @@ class RedPitayaServer(object):
     __metaclass__ = PrintMetaClass
 
     def __init__(self):
-        self.pid = None;
-        self.name = None;
-        self.times = [];
-        self.digitals = [];
-        self.analogA = [];
-        self.analogB = [];
+        self.pid = None
+        self.name = None
+        self.times = []
+        self.digitals = []
+        self.analogA = []
+        self.analogB = []
 
-        self.runner = Runner();
-        self.board = RedPitayaBoard();
+        self.runner = Runner()
+        self.board = RedPitayaBoard()
 
         # single value output
         # self.board.asga.counter_wrap = self.board.asga.counter_step
         # self.board.asgb.counter_wrap = self.board.asgb.counter_step
 
         # set all pins to out
-        self.board.write(RedPitayaBoard.direct_pinP, 0xFF);
-        self.board.write(RedPitayaBoard.direct_pinN, 0xFF);
+        self.board.write(RedPitayaBoard.direct_pinP, 0xFF)
+        self.board.write(RedPitayaBoard.direct_pinN, 0xFF)
 
-        self.clientConnection = None;
+        self.clientConnection = None
 
-        self.fakeALines = [0, 0, 0, 0];
+        self.fakeALines = [0, 0, 0, 0]
 
     def abort(self):
         # kill the server process
-        self.runner.abort();
+        self.runner.abort()
         # The RedPitaya-DSP has a handler for SIGINT that cleans up
 
     def arcl(self, cameras, lightTimePairs):
@@ -220,13 +224,13 @@ class RedPitayaServer(object):
 
     # def profileSet(self, profileStr, digitals, *analogs):
     def setProfile(self, times, pins, values):
-        print('Setting action table...', end=' ');
-        self.actiontable = zip(times, pins, values);
-        print('done');
+        print('Setting action table...', end=' ')
+        self.actiontable = zip(times, pins, values)
+        print('done')
 
 
     def downloadProfile(self): # This is saving the action table
-        self.runner.load(self.actiontable);
+        self.runner.load(self.actiontable)
 
     def initProfile(self, numReps):
         # I'm pretty sure this does not zero the prev values.
@@ -235,12 +239,12 @@ class RedPitayaServer(object):
         pass
 
     def trigCollect(self, wait = True):
-        process = self.runner.start();
+        process = self.runner.start()
         if wait:
-            process.wait();
-        if self.clientConnection:
-            retVal = (100, [self.readPosition(0), self.readPosition(1), 0, 0]);
-            self.clientConnection.receiveData('DSP done', retVal);
+            process.wait()
+        if self.clientConnection
+            retVal = (100, [self.readPosition(0), self.readPosition(1), 0, 0])
+            self.clientConnection.receiveData('DSP done', retVal)
         # needs to block on the dsp finishing.
 
     def moveAbsoluteADU(self, aline, aduPos):
@@ -248,70 +252,70 @@ class RedPitayaServer(object):
         # volts to ADU's for the DSP card: int(pos * 6553.6))
         # But we won't be hooked up to the stage?
         if aline == 0:
-            self.board.write(RedPitayaBoard.asg_chanelA, aduPos);
+            self.board.write(RedPitayaBoard.asg_chanelA, aduPos)
         elif aline == 1:
-            self.board.write(RedPitayaBoard.asg_chanelB, aduPos);
+            self.board.write(RedPitayaBoard.asg_chanelB, aduPos)
         else:
-            print('aline {}>1'.format(aline));
-            self.fakeALines[aline] = aduPos;
+            print('aline {}>1'.format(aline))
+            self.fakeALines[aline] = aduPos
 
     def readPosition(self, axis):
         if axis == 0:
-            return int(self.board.read(RedPitayaBoard.asg_chanelA));
+            return int(self.board.read(RedPitayaBoard.asg_chanelA))
         elif axis == 1:
-            return int(self.board.read(RedPitayaBoard.asg_chanelB));
+            return int(self.board.read(RedPitayaBoard.asg_chanelB))
         else:
-            return self.fakeALines[axis];
+            return self.fakeALines[axis]
 
     def writeDigital(self, level, value):
-        toWrite = value & int('11111111', 2);
+        toWrite = value & int('11111111', 2)
         if level == 0:
-            self.board.write(RedPitayaBoard.out_pinP, toWrite);
+            self.board.write(RedPitayaBoard.out_pinP, toWrite)
         elif level == 1:
-            self.board.write(RedPitayaBoard.out_pinN, toWrite);
+            self.board.write(RedPitayaBoard.out_pinN, toWrite)
 
     def readDigital(self, level):
         if level == 0:
-            return self.board.read(RedPitayaBoard.out_pinP);
+            return self.board.read(RedPitayaBoard.out_pinP)
         elif level == 1:
-            return self.board.read(RedPitayaBoard.out_pinN);
+            return self.board.read(RedPitayaBoard.out_pinN)
         else:
-            return None;
+            return None
 
     def writeLed(self, leds):
-        self.board.write(RedPitayaBoard.led, leds);
+        self.board.write(RedPitayaBoard.led, leds)
 
     def readLed(self, leds):
-        self.board.read(RedPitayaBoard.led);
+        self.board.read(RedPitayaBoard.led)
 
     def demo(self, dt):
-        self.runner.loadDemo(dt);
-        process = self.runner.start();
-        process.wait();
+        self.runner.loadDemo(dt)
+        process = self.runner.start()
+        process.wait()
 
     def receiveClient(self, uri):
-        self.clientConnection = Pyro4.Proxy(uri);
-        print(uri);
+        self.clientConnection = Pyro4.Proxy(uri)
+        print(uri)
 
 
 if __name__ == '__main__':
-    dsp = RedPitayaServer();
-    dspPort = 7000;
-    dspHost = '10.42.0.175';
+    dsp = RedPitayaServer()
+    dspPort = 7000
+    dspHost = '10.42.0.175'
 
-    print('Started program at {}'.format(time.strftime('%A, %B %d, %I:%M %p')));
+    print('Started program at {}'.format(time.strftime('%A, %B %d, %I:%M %p')))
 
-    Pyro4.config.SERIALIZER = 'pickle';
-    Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle');
+    Pyro4.config.SERIALIZER = 'pickle'
+    Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 
     while True:
         try:
-            dspDaemon = Pyro4.Daemon(port = dspPort, host = dspHost);
-            break;
+            dspDaemon = Pyro4.Daemon(port = dspPort, host = dspHost)
+            break
         except Exception as e:
-            print('Socket fail {}'.format(e));
-            time.sleep(1);
+            print('Socket fail {}'.format(e))
+            time.sleep(1)
 
-    print('Providing dsp.d() as [pyroDSP] at {}'.format(dspDaemon.locationStr));
+    print('Providing dsp.d() as [pyroDSP] at {}'.format(dspDaemon.locationStr))
     Pyro4.Daemon.serveSimple({dsp: 'pyroDSP'},
-        daemon = dspDaemon, ns = False, verbose = True);
+        daemon = dspDaemon, ns = False, verbose = True)
