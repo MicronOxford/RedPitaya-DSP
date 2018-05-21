@@ -64,45 +64,39 @@ class PrintMetaClass(type):
             newClassDict[attributeName] = attribute
         return type.__new__(meta, classname, bases, newClassDict)
 
-class RedPitayaBoard(object):
-
-    offset_init = 0x40000000
-    offset_size = 0x4022FFFF - offset_init
-
-    direct_pinP = 0x10
-    direct_pinN = 0x14
-    out_pinP    = 0x18
-    out_pinN    = 0x1C
-    in_pinP     = 0x20
-    in_pinN     = 0x24
-    led         = 0x30
-
-    asg_chanelA = 0x210000
-    asg_chanelB = 0x220000
+# RedPitaya board - writes and reads to the board
+class Board(object):
+    offsetInit = 0x40000000
+    offsetSize = 0x4022FFFF - offsetInit
+    offsets = {                     # specific memory offsets
+        'direct_pinP'  : 0x10,      # Direction for P lines
+        'direct_pinN'  : 0x14,      # Direction for N lines
+        'out_pinP'     : 0x18,      # Output P
+        'out_pinN'     : 0x1C,      # Output N
+        'in_pinP'      : 0x20,      # Input P
+        'in_pinN'      : 0x24,      # Input N
+        'led'          : 0x30,      # LED control
+        'asg_channelA' : 0x210000,  # Output channel A (out1)
+        'asg_channelB' : 0x220000   # Output channel B (out2)
+    }
 
     def __init__(self):
         with open('/dev/mem', 'r+b') as f:
-            self.mem = mmap(f.fileno(), self.offset_size,
-                offset = self.offset_init)
+            self.mem = mmap(f.fileno(), self.offsetSize,
+                offset = self.offsetInit)
 
     def read(self, offset, safe = True):
-        if safe and offset not in [self.direct_pinP, self.direct_pinN,
-        self.out_pinP, self.out_pinN, self.in_pinP, self.in_pinN,
-        self.led, self.asg_chanelA, self.asg_chanelB]:
+        if safe and offset not in Board.offsets.values():
             raise NameError('offset {0:#x} not implemented'.format(offset))
-
-        return struct.unpack('<L', self.mem[offset:offset+4])[0]
+        return struct.unpack('<l', self.mem[offset:offset+4])[0]
 
     def write(self, offset, value, safe = True):
-        if safe and offset not in [self.direct_pinP, self.direct_pinN,
-        self.out_pinP, self.out_pinN, self.in_pinP, self.in_pinN,
-        self.led, self.asg_chanelA, self.asg_chanelB]:
+        if safe and offset not in Board.offsets.values():
             raise NameError('offset {0:#x} not implemented'.format(offset))
+        self.mem[offset:offset+4] = struct.pack('<l', value)
 
-        self.mem[offset:offset+4] = struct.pack('<L', value)
-
+# Creates the actionTable file, and runs the C-code
 class Runner(object):
-
     def __init__(self):
         self.pid = None
         self.filename = None
@@ -124,12 +118,12 @@ class Runner(object):
                     demoAnalogueOutput, line*8000./maxOfLines), file=f)
                 # print('{} {} {}\n{} {} {}'.format(time, demoDigitalPin, line%2,
                 #     time, demoAnalogueOutput, line*8000./maxOfLines), file=f)
-                    time += deltaTime*1e3
+                time += deltaTime*1e3
         self.writtenActionTable = True
 
     def load(self, actiontable):
-        self.filename = self.actionTablesDirectory + 'actTbl-' +
-            time.strftime('%Y%m%d-%H:%M:%S') + '.txt'
+        self.filename = (self.actionTablesDirectory + 'actTbl-' +
+            time.strftime('%Y%m%d-%H:%M:%S') + '.txt')
         try:
             with open(self.filename, 'w') as f:
                 for row in actiontable:
@@ -160,33 +154,22 @@ class Runner(object):
     def stop(self):
         self.abort()
 
+# Combines the Runner and the Board
 @Pyro4.expose
-class RedPitayaServer(object):
-
+class Executor(object):
     __metaclass__ = PrintMetaClass
-
     def __init__(self):
-        self.pid = None
-        self.name = None
-        self.times = []
-        self.digitals = []
-        self.analogA = []
-        self.analogB = []
-
+        self.clientConnection = None
         self.runner = Runner()
-        self.board = RedPitayaBoard()
+        self.board = Board()
 
         # single value output
         # self.board.asga.counter_wrap = self.board.asga.counter_step
         # self.board.asgb.counter_wrap = self.board.asgb.counter_step
 
         # set all pins to out
-        self.board.write(RedPitayaBoard.direct_pinP, 0xFF)
-        self.board.write(RedPitayaBoard.direct_pinN, 0xFF)
-
-        self.clientConnection = None
-
-        self.fakeALines = [0, 0, 0, 0]
+        self.board.write(Board.offsets['direct_pinP'], 0xFF)
+        self.board.write(Board.offsets['direct_pinN'], 0xFF)
 
     def abort(self):
         # kill the server process
@@ -222,71 +205,74 @@ class RedPitayaServer(object):
             self.writeDigital(cameras) # "expose"
             self.writeDigital(0)
 
-    # def profileSet(self, profileStr, digitals, *analogs):
+    # Volts can be between -1 to 1 [-8192 to 8191]
+    def convertVoltsToADUs(self, volts, maxVoltage = 1):
+        if volts > 0:
+            return int(volts*8191/maxVoltage)
+        return int(volts*8192/maxVoltage)
+
+    # expect value in analogue-to-digital-units (ADUs)
+    def writeAnalogue(self, channel, value):
+        if channel == 0:
+            self.board.write(Board.offsets['asg_channelA'], value)
+        elif channel == 1:
+            self.board.write(Board.offsets['asg_channelB'], value)
+        else:
+            raise Exception('Unexpected analogue channel! (0 or 1)')
+
+    def readAnalogue(self, channel):
+        if channel == 0:
+            return int(self.board.read(Board.offsets['asg_channelA']))
+        elif channel == 1:
+            return int(self.board.read(Board.offsets['asg_channelB']))
+        else:
+            raise Exception('Unexpected analogue channel! (0 or 1)')
+
+    def writeDigital(self, value):
+        dP = value & int('11111111', 2)
+        dN = (value & int('1111111100000000', 2)) >> 8
+        self.board.write(Board.offsets['out_pinP'], dP)
+        self.board.write(Board.offsets['out_pinN'], dN)
+
+    def writeDigital(self, line, value):
+        toWrite = value & int('11111111', 2)
+        if line == 0:
+            self.board.write(Board.offsets['out_pinP'], toWrite)
+        elif line == 1:
+            self.board.write(Board.offsets['out_pinN'], toWrite)
+        else:
+            raise Exception('Unexpected digital pin line! (0 or 1)')
+
+    def readDigital(self, line):
+        if line == 0:
+            return self.board.read(Board.offsets['out_pinP'])
+        elif line == 1:
+            return self.board.read(Board.offsets['out_pinN'])
+        else:
+            raise Exception('Unexpected digital pin line! (0 or 1)')
+
+    def writeLed(self, leds):
+        self.board.write(Board.offsets['led'], leds)
+
+    def readLed(self, leds):
+        self.board.read(Board.offsets['led'])
+
     def setProfile(self, times, pins, values):
         print('Setting action table...', end=' ')
         self.actiontable = zip(times, pins, values)
         print('done')
 
-
-    def downloadProfile(self): # This is saving the action table
+    def downloadProfile(self): # This saves the action table
         self.runner.load(self.actiontable)
-
-    def initProfile(self, numReps):
-        # I'm pretty sure this does not zero the prev values.
-        # is it for allocating space?
-        #self.times, self.digitals, self.analogA, self.analogB = [], [], [], []
-        pass
 
     def trigCollect(self, wait = True):
         process = self.runner.start()
         if wait:
             process.wait()
-        if self.clientConnection
-            retVal = (100, [self.readPosition(0), self.readPosition(1), 0, 0])
+        if self.clientConnection:
+            retVal = (100, [self.readAnalogue(0), self.readAnalogue(1), 0, 0])
             self.clientConnection.receiveData('DSP done', retVal)
         # needs to block on the dsp finishing.
-
-    def moveAbsoluteADU(self, aline, aduPos):
-        # probably just use the python lib
-        # volts to ADU's for the DSP card: int(pos * 6553.6))
-        # But we won't be hooked up to the stage?
-        if aline == 0:
-            self.board.write(RedPitayaBoard.asg_chanelA, aduPos)
-        elif aline == 1:
-            self.board.write(RedPitayaBoard.asg_chanelB, aduPos)
-        else:
-            print('aline {}>1'.format(aline))
-            self.fakeALines[aline] = aduPos
-
-    def readPosition(self, axis):
-        if axis == 0:
-            return int(self.board.read(RedPitayaBoard.asg_chanelA))
-        elif axis == 1:
-            return int(self.board.read(RedPitayaBoard.asg_chanelB))
-        else:
-            return self.fakeALines[axis]
-
-    def writeDigital(self, level, value):
-        toWrite = value & int('11111111', 2)
-        if level == 0:
-            self.board.write(RedPitayaBoard.out_pinP, toWrite)
-        elif level == 1:
-            self.board.write(RedPitayaBoard.out_pinN, toWrite)
-
-    def readDigital(self, level):
-        if level == 0:
-            return self.board.read(RedPitayaBoard.out_pinP)
-        elif level == 1:
-            return self.board.read(RedPitayaBoard.out_pinN)
-        else:
-            return None
-
-    def writeLed(self, leds):
-        self.board.write(RedPitayaBoard.led, leds)
-
-    def readLed(self, leds):
-        self.board.read(RedPitayaBoard.led)
 
     def demo(self, dt):
         self.runner.loadDemo(dt)
@@ -297,25 +283,31 @@ class RedPitayaServer(object):
         self.clientConnection = Pyro4.Proxy(uri)
         print(uri)
 
+# Exposes Executor, through Pyro4
+class Server(object):
+    def __init__(self, execHost, execPort, execName = 'redPitaya'):
+        print('Started server at {}'.format(
+            time.strftime('%A, %B %d, %I:%M %p')))
+        executor = Executor()
+
+        Pyro4.config.SERIALIZER = 'pickle'
+        Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
+        while True:
+            try:
+                dspDaemon = Pyro4.Daemon(host = execHost, port = execPort)
+                break
+            except Exception as e:
+                print('Socket fail {}'.format(e))
+                time.sleep(1)
+
+        print('Providing executor as [{}] at {}'.format(execName,
+            dspDaemon.locationStr))
+        Pyro4.Daemon.serveSimple({executor: execName},
+            daemon = dspDaemon, ns = False, verbose = True)
+
 
 if __name__ == '__main__':
-    dsp = RedPitayaServer()
-    dspPort = 7000
-    dspHost = '10.42.0.175'
+    pyroHost = '10.42.0.175'
+    pyroPort = 7000
 
-    print('Started program at {}'.format(time.strftime('%A, %B %d, %I:%M %p')))
-
-    Pyro4.config.SERIALIZER = 'pickle'
-    Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
-
-    while True:
-        try:
-            dspDaemon = Pyro4.Daemon(port = dspPort, host = dspHost)
-            break
-        except Exception as e:
-            print('Socket fail {}'.format(e))
-            time.sleep(1)
-
-    print('Providing dsp.d() as [pyroDSP] at {}'.format(dspDaemon.locationStr))
-    Pyro4.Daemon.serveSimple({dsp: 'pyroDSP'},
-        daemon = dspDaemon, ns = False, verbose = True)
+    Server(pyroHost, pyroPort)
