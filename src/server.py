@@ -109,15 +109,15 @@ class Runner(object):
         self.filename = self.actionTablesDirectory + 'actTblTest.txt'
         with open(self.filename, 'w') as f:
             demoDigitalPin = 5
-            demoAnalogueOutput = -1
+            demoAnalogOutput = -1
             maxOfLines = 100000
             time = 0
             for line in range(maxOfLines):
                 print('{} {} {}'.format(time, demoDigitalPin, line%2), file=f)
                 print('{} {} {}'.format(time,
-                    demoAnalogueOutput, line*8000./maxOfLines), file=f)
+                    demoAnalogOutput, line*8000./maxOfLines), file=f)
                 # print('{} {} {}\n{} {} {}'.format(time, demoDigitalPin, line%2,
-                #     time, demoAnalogueOutput, line*8000./maxOfLines), file=f)
+                #     time, demoAnalogOutput, line*8000./maxOfLines), file=f)
                 time += deltaTime*1e3
         self.writtenActionTable = True
 
@@ -206,27 +206,27 @@ class Executor(object):
             self.writeDigital(0)
 
     # Volts can be between -1 to 1 [-8192 to 8191]
-    def convertVoltsToADUs(self, volts, maxVoltage = 1):
+    def convertVoltsToADUs(volts, maxVoltage = 1):
         if volts > 0:
             return int(volts*8191/maxVoltage)
         return int(volts*8192/maxVoltage)
 
-    # expect value in analogue-to-digital-units (ADUs)
-    def writeAnalogue(self, channel, value):
+    # expect value in analog-to-digital-units (ADUs)
+    def writeAnalog(self, channel, value):
         if channel == 0:
             self.board.write(Board.offsets['asg_channelA'], value)
         elif channel == 1:
             self.board.write(Board.offsets['asg_channelB'], value)
         else:
-            raise Exception('Unexpected analogue channel! (0 or 1)')
+            raise Exception('Unexpected analog channel! (0 or 1)')
 
-    def readAnalogue(self, channel):
+    def readAnalog(self, channel):
         if channel == 0:
             return int(self.board.read(Board.offsets['asg_channelA']))
         elif channel == 1:
             return int(self.board.read(Board.offsets['asg_channelB']))
         else:
-            raise Exception('Unexpected analogue channel! (0 or 1)')
+            raise Exception('Unexpected analog channel! (0 or 1)')
 
     def writeDigital(self, value):
         dP = value & int('11111111', 2)
@@ -262,6 +262,27 @@ class Executor(object):
         self.actiontable = zip(times, pins, values)
         print('done')
 
+    def setProfile(self, table, setup = None):
+        print('Setting action table...', end=' ')
+        if setup:
+            times, pins, values = [], [], []
+            for time, handler, action in table:
+                if handler in setup.handlerToDigitalLine:
+                    pins.append(setup.handlerToDigitalLine[handler])
+                    values.append(action)
+                elif handler in setup.handlerToAnalogLine:
+                    pins.append(setup.handlerToAnalogLine[handler])
+                    values.append(Executor.convertVoltsToADUs(action))
+                else:
+                    raise RuntimeError(
+                        "Unhandled handler when generating profile: %s"
+                        % handler)
+                times.append(float(time))
+            self.actiontable = zip(times, pins, values)
+        else:
+            self.actiontable = table
+        print('done')
+
     def downloadProfile(self): # This saves the action table
         self.runner.load(self.actiontable)
 
@@ -270,7 +291,7 @@ class Executor(object):
         if wait:
             process.wait()
         if self.clientConnection:
-            retVal = (100, [self.readAnalogue(0), self.readAnalogue(1), 0, 0])
+            retVal = (100, [self.readAnalog(0), self.readAnalog(1), 0, 0])
             self.clientConnection.receiveData('DSP done', retVal)
         # needs to block on the dsp finishing.
 
