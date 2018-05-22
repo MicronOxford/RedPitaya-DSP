@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Tom Parks
+# Copyright (C) 2015 Tom Parks <thomasparks@outlook.com>
 # Copyright (C) 2017-2018 Tiago Susano Pinto <tiagosusanopinto@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
