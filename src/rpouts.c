@@ -76,8 +76,8 @@ int initOuts() {
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+ASG_CONFIG) = ((1<<ASG_CONFIG_SMRESET_CHA) | (1<<ASG_CONFIG_SMRESET_CHB)) & ASG_CONFIG_NOTRESERVED;
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHA) = ((0x0 << SCALEOFF_OFFSET) | (ASG_BASE_SCALE << SCALEOFF_SCALE)) & SCALEOFF_NOTRESERVED;
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+SCALEOFF_CHB) = ((0x0 << SCALEOFF_OFFSET) | (ASG_BASE_SCALE << SCALEOFF_SCALE)) & SCALEOFF_NOTRESERVED;
-    
-    // set analogue output signal to 0
+
+    // set analog output signal to 0
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHA) = 0;
     *(volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB) = 0;
 
@@ -109,14 +109,14 @@ void setLEDs(uint32_t leds) {
 }
 
 /*
-* pin -1 & -2 = analogue output 1 & 2
+* pin -1 & -2 = analog output 1 & 2
 * pin [0-7]   = pinP [0-7]
 * pin [8-15]  = pinN [0-7]
 */
 int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
     int returnVal = 0;
     if (pin < 0) {
-        // analogue output
+        // analog output
         // pin -1 = OUT1
         // pin -2 = OUT2
         // action [-8192,8191] = output [-1,1]V
@@ -130,20 +130,20 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
                 *addr = (volatile uint32_t *)(OUTS_MMAP+ASG_OFFSET+OUTPUT_CHB);
                 break;
             default:
-                printf("Analogue pin number was bigger than 2 (%d)\n", pin);
+                printf("Analog pin number was bigger than 2 (%d)\n", pin);
                 return -1;
         }
 
         if (*action < 0) {
             if (*action < -8192) { // -0x2000
-                printf("WARNING! Action was %i. Negative analogue output should be between -1 to -8192 (-8192 apply by default)\n", *action);
+                printf("WARNING! Action was %i. Negative analog output should be between -1 to -8192 (-8192 apply by default)\n", *action);
                 *action = -8192;
                 returnVal = 1;
             }
             *action += 0x4000;
         } else {
             if (*action > 8191) { // 0x1FFF
-                printf("WARNING! Action was %i. Positive analogue output should be between 0 to 8191 (8191 apply by default)\n", *action);
+                printf("WARNING! Action was %i. Positive analog output should be between 0 to 8191 (8191 apply by default)\n", *action);
                 *action = 8191;
                 returnVal = 1;
             }
@@ -151,7 +151,7 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
         *val = *action;
 
         if (*addr == NULL) {
-            printf("Error processing analogue output\n");
+            printf("Error processing analog output\n");
             return -1;
         }
     } else {
@@ -203,7 +203,7 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
             }
 
             if (*action) {
-                *pinStates |= (1<<pin); 
+                *pinStates |= (1<<pin);
             } else {
                 *pinStates &= !(1<<pin);
             }
