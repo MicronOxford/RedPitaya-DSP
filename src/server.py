@@ -122,9 +122,10 @@ class Runner(object):
                 time += deltaTime*1e3
         self.writtenActionTable = True
 
-    def load(self, actiontable):
-        self.filename = (self.actionTablesDirectory + 'actTbl-' +
-            time.strftime('%Y%m%d-%H:%M:%S') + '.txt')
+    def load(self, actiontable, name = None):
+        name = name if name else 'actTbl'
+        self.filename = (self.actionTablesDirectory + str(name) +
+            time.strftime('-%Y%m%d-%H:%M:%S') + '.txt')
         try:
             with open(self.filename, 'w') as f:
                 for row in actiontable:
@@ -284,8 +285,8 @@ class Executor(object):
             self.actiontable = table
         print('done')
 
-    def downloadProfile(self): # This saves the action table
-        self.runner.load(self.actiontable)
+    def downloadProfile(self, name = None): # This saves the action table
+        self.runner.load(self.actiontable, name)
 
     def trigCollect(self, wait = True):
         process = self.runner.start()
