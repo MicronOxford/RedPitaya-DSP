@@ -1,0 +1,121 @@
+DSP C-code
+Initialize all:
+    initTime:
+        * Creates a memory mapping to Time_Base_Address.
+        * Clock32 is a pointer to the first 32bits of a 64bits value. Since the
+        clock memory is divided in 2 32bits address, when updating, it updates
+        using the clock32, that is pointing to the 64bits value, updating
+        therefore the 64value with the current time.
+    initOuts:
+        * Creates a memory mapping of RP_BASE_ADDR (to control FPGA)
+        * Turn all pins into output mode and their values to 0; LEDs to 0
+        (turning them off); and reset analog output to 0.
+        * There is some weird properties relative to the analog that allows to
+        create wave signals. But we only need a continuous signal.
+    Signal handling: handle the 'kill' signal (e.g. ctrl+C) to release the
+    actionTable and clear all the output signals.
+
+Creating the actionTable:
+    * Reads the number of lines, and allocate memory for the actionTable.
+    * For each line, it reads the time (in nanoseconds), the pin number (handler)
+    and the action.
+    * Parses the time from nanoSeconds to clocks ticks; and the rest values
+    using setPinVal:
+        If pin value is less than 0, it means is an analog signal output:
+            * Creates the correct address for the analog output (Channel A or B);
+            * The values goes between [0-0x3FFF]; 14 bits (0-13), where the last
+            one is to define negative numbers. Therefore, there is 8191 positive
+            values ([0 - 8191] -> [0x0 - 0x1FFF]) and 8192 negative values
+            ([-8192 - -1] -> [0x2000 - 0x3FFF]).
+        If pin value is positive, it is a digital signal. There is 16 pins
+        divided in 2 group/lines of pins, line P (0-7) and line N (8-15)
+            If action is negative, it is a wait state:
+                -1 waits for signal to be 1;
+                -2 waits for signal to be 0;
+                -3 waits for signal to change (edge)
+            If action is positive it is a signal output (0 or 1)
+            * When changing it, the previous state must be considered. This
+            could be done during run time (execute Table), by reading, changing
+            and writing again, but it is also possible to simulate the changes
+            on the lines, and then during run time, it will only need to write.
+
+Maximize the process priority in the scheduler
+
+Execute actionTable:
+    * During execTable, there is 3 different 64bits values for timing. The
+    nextTime and startTime, both created and updated on execTable, and the
+    currentTime which is updated using updateCurremtTime() on timeControl
+        updateCurrentTime:
+        * updates first the most significant 32bits (msb) and then the less
+        significant 32bits (lsb). After it, the msb must be checked if was
+        changed, since between both reads, an overflow from the lsb, changing
+        the msb, might have been happened.
+    * After updating the currentTime, it initializes the startTime with the
+    current value.
+    * For each line (action), start by updating nextTime with the sum between
+    startTime and the line clockTime, so it can be used later without the need
+    to compute the same sum while waiting and checking for currentTime to be
+    bigger than nextTime.
+    * After it, starts by checking if it is an input action (wait state) or an
+    output.
+        * For output actions, it waits for the currentTime to be bigger or equal
+        than nextTime, with a simple while(current<next) {update Current}, so
+        it keeps updating the currentTime until it isn't bigger than nextTime.
+        After it just writes the actionValue in the actionAddress that was
+        pre-calculated previous when reading/creating the file/actionTable
+        * For an input action (wait states). Starts by getting the memory address
+        to change the pin's mode, waits for currentTime, and changes it's mode
+        to input. In case the waiting state is an waiting for edge, it checks
+        the current pin status and turns the waiting state into a wait for 0 or
+        wait for 1. After it, waits for the right pin to be 0 or 1, depending
+        on the waiting type, and updates the startTime with the currentTime;
+        and turns the pin's mode back to output. After an waiting state, it
+        is expected that the actions times start again in 0.
+
+
+Server.py
+    *Board -> responsible for reading and writing on memory
+        it also has a dictionary with some memories offsets (analog, digital
+        pins, and LEDs). When reading or writing it will check if the offset in
+        the dictionary and raise an Error if not. This behaviour can be ignored by
+        passing an argument safe to False.
+    *Runner -> responsible for creating the actionTable file and running the
+    C-code binary.
+        * Init: defines the C-code binary directory and the directory for saving
+        and reading the actionTable.
+        * loadDemo: creates a demofile with 100k pair of lines, where a digital
+        change state (between 0 and 1) each pair, and the analog goes from 0 to
+        8000 (almost the maximum).
+        * load: Create a file with the actionTable. it changes the time from
+        microseconds to nanoseconds.
+        * abort: in case the process with the C-code is running, sends a kill
+        command with the process ID.
+        * start: start the C-code with the actionTable and stores it's processID
+    *Executor -> combines Runner with Board
+        * setProfile: creates the actionTable, can receive a setup to parse the
+        handlers into pin numbers, otherwise considers that table as already the
+        pin numbers.
+        * downloadProfile: saves the actionTable through Runner, actionTable
+        name can be defined
+        * triggCollect: starts actionTable through Runner (if actionTable was
+        saved before)
+        * demo: Creates and starts a demo
+        * It also has functionalities through Board in order to do snapshots,
+        set and get digital and analog signals, individually.
+    *Server -> expose Executor through Pyro4, with a designated host and port.
+If server.py is executed, it creates an Executor with the uri 10.,42.0.175:7000
+
+
+In 'microscope' an ExecutorDevice abstract class was created (on devices), as
+well as, a RedPitaya class (in executors.redpitaya) that extends the
+ExecutorDevice, and works as a client to all the rest of the work. The redPitaya
+is initialized with a specific URI and can execute a defined Table
+
+
+Possible TODOs:
+*Merge digital inputs that occur on the same time and line
+*Save the time when waiting states continue.
+*Add some kind of logging
+*Add some kind of mechanism if gets stuck in a wait state. This can be done
+directly on the C-code or in the server side using Pyro4_timeout or abort the
+process
