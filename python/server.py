@@ -261,6 +261,9 @@ class rpServer(object):
         else:
             return self.fakeALines[axis]
 
+    def ReadDigital(self):
+        return self.board.hk.expansion_connector_output_P
+
     def WriteDigital(self, level):
         dP, dN = level & int('11111111', 2), (level & int('1111111100000000', 2)) >> 8
         self.board.hk.led = level & int('11111111', 2) # 7 led's
