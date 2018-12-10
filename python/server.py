@@ -116,7 +116,7 @@ class Runner(object):
     def stop(self):
         self.abort()
 
-
+@Pyro4.expose
 class rpServer(object):
 
     __metaclass__ = PrintMetaClass
