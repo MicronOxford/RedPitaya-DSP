@@ -276,9 +276,22 @@ class rpServer(object):
         print(uri)
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(add_help=True)
+    parser.add_argument('address', nargs='?', default='', type=str)
+    parser.add_argument('port', nargs='?', default='7000', type=int)
+    args = parser.parse_args()
+
+    if args.address is '':
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("129.67.75.51", 80))
+        args.address = s.getsockname()[0]
+        del s
+
     dsp = rpServer()
 
-    print("providing dsp.d() as [pyroDSP] on port 7766")
+    print("providing dsp.d() as [pyroDSP] on %s:%s" % (args.address, args.port))
     print("Started program at",time.strftime("%A, %B %d, %I:%M %p"))
 
     Pyro4.config.SERIALIZER = 'pickle'
@@ -286,7 +299,7 @@ if __name__ == '__main__':
 
     while True:
         try:
-            daemon = Pyro4.Daemon(port = 7000, host = '192.168.1.100')
+            daemon = Pyro4.Daemon(port=args.port, host=args.address)
             break
         except Exception as e:
             print("Socket fail", e)
