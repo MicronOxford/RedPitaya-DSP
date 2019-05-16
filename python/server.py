@@ -1,15 +1,14 @@
-#! /usr/bin/python
-from __future__ import print_function
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import Pyro4
 import subprocess
-import threading
-import os
 import time
 
 import logging
 import traceback
 import sys
+
 logging.basicConfig()  # or your own sophisticated setup
 logging.getLogger("Pyro4").setLevel(logging.DEBUG)
 logging.getLogger("Pyro4.core").setLevel(logging.DEBUG)
@@ -31,9 +30,6 @@ COMM_RX_AT_ROWS = 0x10
 COMM_RX_AT_FLAG = 0x14
 COMM_RX_AT      = 0x18
 
-def bin(s):
-    ''' Returns the set bits in a positive int as a str.'''
-    return str(s) if s<=1 else bin(s>>1) + str(s&1)
 
 def busy_wait(dt):
     '''Wait without sleeping for higher accuracy.'''
@@ -57,6 +53,7 @@ def printfunc(func):
             raise e
     return wrapped
 
+
 class PrintMetaClass(type):
     def __new__(meta, classname, bases, classDict):
         newClassDict = {}
@@ -68,7 +65,7 @@ class PrintMetaClass(type):
         return type.__new__(meta, classname, bases, newClassDict)
 
 
-class Runner(object):
+class Runner:
 
     def __init__(self):
         self.pid = None
@@ -92,8 +89,9 @@ class Runner(object):
             for row in actiontable:
                 time, digitals, a1, a2 = row
                 time = int(time*1e3) # convert to ns
-                dP, dN = digitals & int('11111111', 2), (digitals & int('1111111100000000', 2)) >> 8
-                finalrow = time, dP, dN, a1, a2
+                dP = digitals & 0b11111111
+                dN = (digitals & 0b1111111100000000) >> 8
+                finalrow = (time, dP, dN, a1, a2)
                 print('time:{} digitalP:{} digitalN:{} a1:{} a2:{}'.format(*finalrow))
                 print('{} {} {} {} {}'.format(*finalrow), file=f)
         self.writtenActionTable = True
@@ -117,10 +115,7 @@ class Runner(object):
         self.abort()
 
 @Pyro4.expose
-class rpServer(object):
-
-    __metaclass__ = PrintMetaClass
-
+class rpServer(metaclass=PrintMetaClass):
     def __init__(self):
         self.pid = None
         self.name = None
@@ -220,7 +215,7 @@ class rpServer(object):
         print("dv:{},\n av:{},\n bv:{}".format(Dvals, Avals, Bvals))
 
         times, digitals, analogA, analogB = [], [], [], []
-        times = sorted(list(set(Dtimes+Atimes+Btimes)))
+        times = sorted(set(Dtimes+Atimes+Btimes))
         for timepoint in times:
             self.times.append(timepoint)
             for outline, inval, timesForLine in [(digitals, Dvals, Dtimes),
@@ -232,9 +227,8 @@ class rpServer(object):
                     prevValue = outline[-1] if outline else 0
                     outline.append(prevValue) # the last value
 
-        self.actiontable = zip(times, digitals, analogA, analogB)
         print("sort")
-        self.actiontable.sort()
+        self.actiontable = sorted(zip(times, digitals, analogA, analogB))
 
 
     def DownloadProfile(self): # This is saving the action table
@@ -265,8 +259,9 @@ class rpServer(object):
         return self.board.hk.expansion_connector_output_P
 
     def WriteDigital(self, level):
-        dP, dN = level & int('11111111', 2), (level & int('1111111100000000', 2)) >> 8
-        self.board.hk.led = level & int('11111111', 2) # 7 led's
+        dP = level & 0b11111111
+        dN = (level & 0b1111111100000000) >> 8
+        self.board.hk.led = level & 0b11111111 # 7 led's
         self.board.hk.expansion_connector_output_P = dP
         self.board.hk.expansion_connector_output_N = dN
 
@@ -277,6 +272,7 @@ class rpServer(object):
     def receiveClient(self, uri):
         self.clientConnection = Pyro4.Proxy(uri)
         print(uri)
+
 
 if __name__ == '__main__':
     import argparse
@@ -307,5 +303,5 @@ if __name__ == '__main__':
         except Exception as e:
             print("Socket fail", e)
             time.sleep(1)
-    Pyro4.Daemon.serveSimple({dsp: 'pyroDSP'},
-            daemon = daemon, ns = False, verbose = True)
+    Pyro4.Daemon.serveSimple({dsp: 'pyroDSP'}, daemon=daemon, ns=False,
+                             verbose=True)
