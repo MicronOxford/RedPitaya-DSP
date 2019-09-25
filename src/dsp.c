@@ -186,20 +186,16 @@ int readActionTableLine(char *line, long lineno){
 int execActionTable(long lines) {
 	printf("exec action table\n");
 	// float a_volts = 0;
-  // rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
+	// rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
 	// rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
 	// rp_GenAmp(RP_CH_1, a_volts);
 	// rp_GenAmp(RP_CH_2, a_volts);
 	// rp_GenOutEnable(RP_CH_1);
 	// rp_GenOutEnable(RP_CH_2);
 
-	printf("faffing with actiontables\n");
 	XTime now;
-
-	printf("set time\n");
-
 	long line;
-	XTime_SetTime(0);
+
 	XTime_GetTime(&now);
 	for (line = 0; line < lines; line++){
 		while (now  <= table[line].clocks) XTime_GetTime(&now);
@@ -214,8 +210,8 @@ int execActionTable(long lines) {
 
 
 void sig_handler(int signo){
-  if (signo == SIGINT)
-    _exit(5);
+	if (signo == SIGINT)
+		_exit(5);
 }
 
 void _exit(int status) {
