@@ -43,10 +43,8 @@ actionTable_t *table = NULL;
 
 int main(int argc, char *argv[])
 {
-	printf("hello, w\n");
-
 	if (initTimer() == 1){
-		printf("init timer failed\n");
+		fprintf(stderr, "init timer failed\n");
 		_exit(2);
 	};
 
@@ -61,10 +59,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (signal(SIGINT, sig_handler) == SIG_ERR){
-  	printf("Signal handler failed\n");
-  }
-
-	printf("hello, world!\n");
+		fprintf(stderr, "Signal handler failed\n");
+	}
 
 	if (argc != 2) {
 		printf("USAGE: dsp ACTIONTABLEFILE\n");
@@ -74,7 +70,7 @@ int main(int argc, char *argv[])
 	FILE *fp;
 	fp = fopen(argv[1], "r");
 	if (fp == NULL) {
-		printf("Could not open file %s\n", argv[1]);
+		fprintf(stderr, "Could not open file %s\n", argv[1]);
 		_exit(2);
 	}
 
@@ -90,7 +86,7 @@ int main(int argc, char *argv[])
 	table = malloc(sizeof(actionTable_t)*lines);
 
 	if (readActionTable(fp, lines) != 0){
-		printf("Failed to read action table file.\n");
+		fprintf(stderr, "Failed to read action table file.\n");
 		_exit(3);
 	}
 	printf("read action table file.\n");
@@ -102,13 +98,13 @@ int main(int argc, char *argv[])
 	struct sched_param params;
 	params.sched_priority = 99;
 	if (sched_setscheduler(0, SCHED_FIFO, &params) == -1){
-		printf("Failed to set priority.\n");
+		fprintf(stderr, "Failed to set priority.\n");
 		_exit(4);
 	}
 
 	int execstatus = execActionTable(lines);
 	if (execstatus < 0) {
-		printf("Failed to exec action table (%i).\n", execstatus);
+		fprintf(stderr, "Failed to exec action table (%i).\n", execstatus);
 		_exit(5);
 	}
 	printf("exec action table done.\n");
@@ -128,12 +124,12 @@ int readActionTable(FILE *fp, long lines) {
 	for (lineno = 0; lineno < lines; lineno++){
 		bytes_read = getline(&linestr, &linelen, fp);
 		if (bytes_read <= 0){
-			printf("read %lu lines of action table, but was empty\n", lineno);
+			fprintf(stderr, "read %lu lines of action table, but was empty\n", lineno);
 			free(linestr);
 			return -1;
 		}
 		if (readActionTableLine(linestr, lineno) < 0){
-			printf("readActionTableLine failed on %lu\n", lineno);
+			fprintf(stderr, "readActionTableLine failed on %lu\n", lineno);
 			free(linestr);
 			return -1;
 		}
@@ -154,27 +150,27 @@ int readActionTableLine(char *line, long lineno){
 
 	nstime_s = strtok(line, DELIM);  // REMINDER: first strtok call needs the str.
 	if (nstime_s == NULL){
-		printf("action nstime is NULL for '%s'\n", line);
+		fprintf(stderr, "action nstime is NULL for '%s'\n", line);
 		return -1;
 	}
 	pinP_s = strtok(NULL, DELIM);
 	if (pinP_s == NULL){
-		printf("pinP is NULL for %s\n", line);
+		fprintf(stderr,"pinP is NULL for %s\n", line);
 		return -1;
 	}
 	pinN_s = strtok(NULL, DELIM);
 	if (pinN_s == NULL){
-		printf("pinN is NULL for %s\n", line);
+		fprintf(stderr,"pinN is NULL for %s\n", line);
 		return -1;
 	}
 	a1_s = strtok(NULL, DELIM);
 	if (a1_s == NULL){
-		printf("a1_s is NULL for %s", line);
+		fprintf(stderr,"a1_s is NULL for %s", line);
 		return -1;
 	}
 	a2_s = strtok(NULL, DELIM);
 	if (a2_s == NULL){
-		printf("a2_s is NULL for %s", line);
+		fprintf(stderr,"a2_s is NULL for %s", line);
 		return -1;
 	}
 	table[lineno].clocks = (strtoull(nstime_s, NULL, 10) * COUNTS_PER_SECOND) / 1000000000L;
@@ -190,20 +186,16 @@ int readActionTableLine(char *line, long lineno){
 int execActionTable(long lines) {
 	printf("exec action table\n");
 	// float a_volts = 0;
-  // rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
+	// rp_GenWaveform(RP_CH_1, RP_WAVEFORM_DC);
 	// rp_GenWaveform(RP_CH_2, RP_WAVEFORM_DC);
 	// rp_GenAmp(RP_CH_1, a_volts);
 	// rp_GenAmp(RP_CH_2, a_volts);
 	// rp_GenOutEnable(RP_CH_1);
 	// rp_GenOutEnable(RP_CH_2);
 
-	printf("faffing with actiontables\n");
 	XTime now;
-
-	printf("set time\n");
-
 	long line;
-	XTime_SetTime(0);
+
 	XTime_GetTime(&now);
 	for (line = 0; line < lines; line++){
 		while (now  <= table[line].clocks) XTime_GetTime(&now);
@@ -218,8 +210,8 @@ int execActionTable(long lines) {
 
 
 void sig_handler(int signo){
-  if (signo == SIGINT)
-    _exit(5);
+	if (signo == SIGINT)
+		_exit(5);
 }
 
 void _exit(int status) {
