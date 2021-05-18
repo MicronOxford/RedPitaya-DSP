@@ -205,7 +205,7 @@ int setPinVal(int pin, int *action, volatile uint32_t ** addr, uint32_t *val) {
             if (*action) {
                 *pinStates |= (1<<pin);
             } else {
-                *pinStates &= !(1<<pin);
+                *pinStates &= ~(1<<pin);
             }
             *val = *pinStates;
         }
